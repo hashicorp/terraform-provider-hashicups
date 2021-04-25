@@ -3,7 +3,6 @@ package resource
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"time"
 )
@@ -66,7 +65,6 @@ func RetryContext(ctx context.Context, timeout time.Duration, f RetryFunc) error
 //
 // Deprecated: Please use RetryContext to ensure proper plugin shutdown
 func Retry(timeout time.Duration, f RetryFunc) error {
-	log.Printf("[WARN] Retry is deprecated, please use RetryContext")
 	return RetryContext(context.Background(), timeout, f)
 }
 
@@ -78,6 +76,10 @@ type RetryFunc func() *RetryError
 type RetryError struct {
 	Err       error
 	Retryable bool
+}
+
+func (e *RetryError) Unwrap() error {
+	return e.Err
 }
 
 // RetryableError is a helper to create a RetryError that's retryable from a

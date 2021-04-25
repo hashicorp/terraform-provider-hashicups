@@ -13,40 +13,40 @@ func dataSourceOrder() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceOrderRead,
 		Schema: map[string]*schema.Schema{
-			"id": &schema.Schema{
+			"id": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
-			"items": &schema.Schema{
+			"items": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"coffee_id": &schema.Schema{
+						"coffee_id": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
-						"coffee_name": &schema.Schema{
+						"coffee_name": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"coffee_teaser": &schema.Schema{
+						"coffee_teaser": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"coffee_description": &schema.Schema{
+						"coffee_description": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"coffee_price": &schema.Schema{
+						"coffee_price": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
-						"coffee_image": &schema.Schema{
+						"coffee_image": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"quantity": &schema.Schema{
+						"quantity": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
@@ -57,7 +57,7 @@ func dataSourceOrder() *schema.Resource {
 	}
 }
 
-func dataSourceOrderRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataSourceOrderRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*hc.Client)
 
 	// Warning or errors can be collected in a slice type

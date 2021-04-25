@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/internal/configs/configschema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/meta"
@@ -22,6 +23,18 @@ const uaEnvVar = "TF_APPEND_USER_AGENT"
 var ReservedProviderFields = []string{
 	"alias",
 	"version",
+}
+
+// StopContext returns a context safe for global use that will cancel
+// when Terraform requests a stop. This function should only be called
+// within a ConfigureContextFunc, passing in the request scoped context
+// received in that method.
+//
+// Deprecated: The use of a global context is discouraged. Please use the new
+// context aware CRUD methods.
+func StopContext(ctx context.Context) (context.Context, bool) {
+	stopContext, ok := ctx.Value(StopContextKey).(context.Context)
+	return stopContext, ok
 }
 
 // Provider represents a resource provider in Terraform, and properly
@@ -74,7 +87,7 @@ type Provider struct {
 	// ConfigureContextFunc is a function for configuring the provider. If the
 	// provider doesn't need to be configured, this can be omitted. This function
 	// receives a context.Context that will cancel when Terraform sends a
-	// cancellation signal. This function can yield Diagnostics
+	// cancellation signal. This function can yield Diagnostics.
 	ConfigureContextFunc ConfigureContextFunc
 
 	meta interface{}
@@ -133,11 +146,6 @@ func (p *Provider) InternalValidate() error {
 		if err := r.InternalValidate(nil, false); err != nil {
 			validationErrors = multierror.Append(validationErrors, fmt.Errorf("data source %s: %s", k, err))
 		}
-	}
-
-	// Warn of deprecations
-	if p.ConfigureFunc != nil && p.ConfigureContextFunc == nil {
-		log.Printf("[WARN] ConfigureFunc is deprecated, please use ConfigureContextFunc")
 	}
 
 	return validationErrors
@@ -458,4 +466,9 @@ func (p *Provider) UserAgent(name, version string) string {
 	}
 
 	return ua
+}
+
+// GRPCProvider returns a gRPC server, for use with terraform-plugin-mux.
+func (p *Provider) GRPCProvider() tfprotov5.ProviderServer {
+	return NewGRPCProviderServer(p)
 }

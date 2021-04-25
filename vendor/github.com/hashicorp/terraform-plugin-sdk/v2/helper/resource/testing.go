@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,13 +11,13 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	tftest "github.com/hashicorp/terraform-plugin-test"
 	testing "github.com/mitchellh/go-testing-interface"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/internal/addrs"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/internal/diagutils"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/internal/plugintest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
@@ -244,7 +243,7 @@ func runSweeperWithRegion(region string, s *Sweeper, sweepers map[string]*Sweepe
 	return runE
 }
 
-const testEnvVar = "TF_ACC"
+const TestEnvVar = "TF_ACC"
 
 // TestCheckFunc is the callback type used with acceptance tests to check
 // the state of a resource. The state passed in is the latest state known,
@@ -258,6 +257,9 @@ type ImportStateCheckFunc func([]*terraform.InstanceState) error
 // ImportStateIdFunc is an ID generation function to help with complex ID
 // generation for ImportState tests.
 type ImportStateIdFunc func(*terraform.State) (string, error)
+
+// ErrorCheckFunc is a function providers can use to handle errors.
+type ErrorCheckFunc func(error) error
 
 // TestCase is a single acceptance test case used to test the apply/destroy
 // lifecycle of a resource in a specific configuration.
@@ -278,15 +280,43 @@ type TestCase struct {
 	// acceptance tests, such as verifying that keys are setup.
 	PreCheck func()
 
+	// ProviderFactories can be specified for the providers that are valid.
+	//
+	// These are the providers that can be referenced within the test. Each key
+	// is an individually addressable provider. Typically you will only pass a
+	// single value here for the provider you are testing. Aliases are not
+	// supported by the test framework, so to use multiple provider instances,
+	// you should add additional copies to this map with unique names. To set
+	// their configuration, you would reference them similar to the following:
+	//
+	//  provider "my_factory_key" {
+	//    # ...
+	//  }
+	//
+	//  resource "my_resource" "mr" {
+	//    provider = my_factory_key
+	//
+	//    # ...
+	//  }
+	ProviderFactories map[string]func() (*schema.Provider, error)
+
+	// ProtoV5ProviderFactories serves the same purpose as ProviderFactories,
+	// but for protocol v5 providers defined using the terraform-plugin-go
+	// ProviderServer interface.
+	ProtoV5ProviderFactories map[string]func() (tfprotov5.ProviderServer, error)
+
 	// Providers is the ResourceProvider that will be under test.
 	//
-	// Alternately, ProviderFactories can be specified for the providers
-	// that are valid. This takes priority over Providers.
-	//
-	// The end effect of each is the same: specifying the providers that
-	// are used within the tests.
-	Providers         map[string]*schema.Provider
-	ProviderFactories map[string]func() (*schema.Provider, error)
+	// Deprecated: Providers is deprecated, please use ProviderFactories
+	Providers map[string]*schema.Provider
+
+	// ExternalProviders are providers the TestCase relies on that should
+	// be downloaded from the registry during init. This is only really
+	// necessary to set if you're using import, as providers in your config
+	// will be automatically retrieved during init. Import doesn't use a
+	// config, however, so we allow manually specifying them here to be
+	// downloaded for import tests.
+	ExternalProviders map[string]ExternalProvider
 
 	// PreventPostDestroyRefresh can be set to true for cases where data sources
 	// are tested alongside real resources
@@ -295,6 +325,10 @@ type TestCase struct {
 	// CheckDestroy is called after the resource is finally destroyed
 	// to allow the tester to test that the resource is truly gone.
 	CheckDestroy TestCheckFunc
+
+	// ErrorCheck allows providers the option to handle errors such as skipping
+	// tests based on certain errors.
+	ErrorCheck ErrorCheckFunc
 
 	// Steps are the apply sequences done within the context of the
 	// same state. Each step can have its own check to verify correctness.
@@ -311,6 +345,13 @@ type TestCase struct {
 	// IDRefreshIgnore is a list of configuration keys that will be ignored.
 	IDRefreshName   string
 	IDRefreshIgnore []string
+}
+
+// ExternalProvider holds information about third-party providers that should
+// be downloaded by Terraform as part of running the test step.
+type ExternalProvider struct {
+	VersionConstraint string // the version constraint for the provider
+	Source            string // the provider source
 }
 
 // TestStep is a single apply sequence of a test, done within the
@@ -441,10 +482,6 @@ type TestStep struct {
 	// fields that can't be refreshed and don't matter.
 	ImportStateVerify       bool
 	ImportStateVerifyIgnore []string
-
-	// provider s is used internally to maintain a reference to the
-	// underlying providers during the tests
-	providers map[string]*schema.Provider
 }
 
 // ParallelTest performs an acceptance test on a resource, allowing concurrency
@@ -454,6 +491,7 @@ type TestStep struct {
 // tests to occur against the same resource or service (e.g. random naming).
 // All other requirements of the Test function also apply to this function.
 func ParallelTest(t testing.T, c TestCase) {
+	t.Helper()
 	t.Parallel()
 	Test(t, c)
 }
@@ -469,44 +507,32 @@ func ParallelTest(t testing.T, c TestCase) {
 // long, we require the verbose flag so users are able to see progress
 // output.
 func Test(t testing.T, c TestCase) {
+	t.Helper()
+
 	// We only run acceptance tests if an env var is set because they're
 	// slow and generally require some outside configuration. You can opt out
 	// of this with OverrideEnvVar on individual TestCases.
-	if os.Getenv(testEnvVar) == "" && !c.IsUnitTest {
+	if os.Getenv(TestEnvVar) == "" && !c.IsUnitTest {
 		t.Skip(fmt.Sprintf(
 			"Acceptance tests skipped unless env '%s' set",
-			testEnvVar))
+			TestEnvVar))
 		return
 	}
 
-	logging.SetOutput()
+	logging.SetOutput(t)
 
-	// get instances of all providers, so we can use the individual
-	// resources to shim the state during the tests.
-	providers := make(map[string]*schema.Provider)
-	var provider string
-	for name, pf := range c.ProviderFactories {
-		p, err := pf()
-		if err != nil {
-			t.Fatal(err)
-		}
-		providers[name] = p
-		provider = name
-	}
-	for name, p := range c.Providers {
-		providers[name] = p
-		provider = name
-	}
+	// Copy any explicitly passed providers to factories, this is for backwards compatibility.
+	if len(c.Providers) > 0 {
+		c.ProviderFactories = map[string]func() (*schema.Provider, error){}
 
-	if len(providers) != 1 {
-		t.Fatalf("Only the provider under test should be set in TestCase, got %d providers. Other providers can be used by adding their provider blocks to their config; they will automatically be downloaded as part of terraform init.", len(providers))
-	}
-
-	// Auto-configure all providers.
-	for _, p := range providers {
-		diags := p.Configure(context.Background(), terraform.NewResourceConfigRaw(nil))
-		if diags.HasError() {
-			t.Fatal("error configuring provider: %s", diagutils.ErrorDiags(diags))
+		for name, p := range c.Providers {
+			if _, ok := c.ProviderFactories[name]; ok {
+				t.Fatalf("ProviderFactory for %q already exists, cannot overwrite with Provider", name)
+			}
+			prov := p
+			c.ProviderFactories[name] = func() (*schema.Provider, error) {
+				return prov, nil
+			}
 		}
 	}
 
@@ -521,33 +547,60 @@ func Test(t testing.T, c TestCase) {
 	if err != nil {
 		t.Fatalf("Error getting working dir: %s", err)
 	}
-	helper := tftest.AutoInitProviderHelper(provider, sourceDir)
-	defer func(helper *tftest.Helper) {
+	helper := plugintest.AutoInitProviderHelper(sourceDir)
+	defer func(helper *plugintest.Helper) {
 		err := helper.Close()
 		if err != nil {
 			log.Printf("Error cleaning up temporary test files: %s", err)
 		}
 	}(helper)
 
-	runNewTest(t, c, providers, helper)
+	runNewTest(t, c, helper)
 }
 
 // testProviderConfig takes the list of Providers in a TestCase and returns a
 // config with only empty provider blocks. This is useful for Import, where no
 // config is provided, but the providers must be defined.
-func testProviderConfig(c TestCase) string {
+func testProviderConfig(c TestCase) (string, error) {
 	var lines []string
+	var requiredProviders []string
 	for p := range c.Providers {
 		lines = append(lines, fmt.Sprintf("provider %q {}\n", p))
 	}
+	for p, v := range c.ExternalProviders {
+		if _, ok := c.Providers[p]; ok {
+			return "", fmt.Errorf("Provider %q set in both Providers and ExternalProviders for TestCase. Must be set in only one.", p)
+		}
+		if _, ok := c.ProviderFactories[p]; ok {
+			return "", fmt.Errorf("Provider %q set in both ProviderFactories and ExternalProviders for TestCase. Must be set in only one.", p)
+		}
+		lines = append(lines, fmt.Sprintf("provider %q {}\n", p))
+		var providerBlock string
+		if v.VersionConstraint != "" {
+			providerBlock = fmt.Sprintf("%s\nversion = %q", providerBlock, v.VersionConstraint)
+		}
+		if v.Source != "" {
+			providerBlock = fmt.Sprintf("%s\nsource = %q", providerBlock, v.Source)
+		}
+		if providerBlock != "" {
+			providerBlock = fmt.Sprintf("%s = {%s\n}\n", p, providerBlock)
+		}
+		requiredProviders = append(requiredProviders, providerBlock)
+	}
 
-	return strings.Join(lines, "")
+	if len(requiredProviders) > 0 {
+		lines = append([]string{fmt.Sprintf("terraform {\nrequired_providers {\n%s}\n}\n\n", strings.Join(requiredProviders, ""))}, lines...)
+	}
+
+	return strings.Join(lines, ""), nil
 }
 
 // UnitTest is a helper to force the acceptance testing harness to run in the
 // normal unit test suite. This should only be used for resource that don't
 // have any external dependencies.
 func UnitTest(t testing.T, c TestCase) {
+	t.Helper()
+
 	c.IsUnitTest = true
 	Test(t, c)
 }

@@ -17,50 +17,50 @@ func resourceOrder() *schema.Resource {
 		UpdateContext: resourceOrderUpdate,
 		DeleteContext: resourceOrderDelete,
 		Schema: map[string]*schema.Schema{
-			"last_updated": &schema.Schema{
+			"last_updated": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
 			},
-			"items": &schema.Schema{
+			"items": {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"coffee": &schema.Schema{
+						"coffee": {
 							Type:     schema.TypeList,
 							MaxItems: 1,
 							Required: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"id": &schema.Schema{
+									"id": {
 										Type:     schema.TypeInt,
 										Required: true,
 									},
-									"name": &schema.Schema{
+									"name": {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
-									"teaser": &schema.Schema{
+									"teaser": {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
-									"description": &schema.Schema{
+									"description": {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
-									"price": &schema.Schema{
+									"price": {
 										Type:     schema.TypeInt,
 										Computed: true,
 									},
-									"image": &schema.Schema{
+									"image": {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
 								},
 							},
 						},
-						"quantity": &schema.Schema{
+						"quantity": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
@@ -108,7 +108,7 @@ func resourceOrderCreate(ctx context.Context, d *schema.ResourceData, m interfac
 	return diags
 }
 
-func resourceOrderRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceOrderRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*hc.Client)
 
 	// Warning or errors can be collected in a slice type
@@ -164,7 +164,7 @@ func resourceOrderUpdate(ctx context.Context, d *schema.ResourceData, m interfac
 	return resourceOrderRead(ctx, d, m)
 }
 
-func resourceOrderDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceOrderDelete(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*hc.Client)
 
 	// Warning or errors can be collected in a slice type

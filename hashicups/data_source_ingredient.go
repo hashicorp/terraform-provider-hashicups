@@ -14,28 +14,28 @@ func dataSourceIngredients() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIngredientsRead,
 		Schema: map[string]*schema.Schema{
-			"coffee_id": &schema.Schema{
+			"coffee_id": {
 				Type:     schema.TypeInt,
 				Required: true,
 			},
-			"ingredients": &schema.Schema{
+			"ingredients": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": &schema.Schema{
+						"id": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
-						"name": &schema.Schema{
+						"name": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"quantity": &schema.Schema{
+						"quantity": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
-						"unit": &schema.Schema{
+						"unit": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -46,7 +46,7 @@ func dataSourceIngredients() *schema.Resource {
 	}
 }
 
-func dataSourceIngredientsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataSourceIngredientsRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*hc.Client)
 
 	// // Warning or errors can be collected in a slice type
