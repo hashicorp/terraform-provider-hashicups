@@ -7,19 +7,10 @@ terraform {
   }
 }
 provider "hashicups" {
-  username = "rachel"
+  username = "education"
   password = "test123"
   host     = "http://localhost:19090"
 }
-
-// resource "hashicups_order" "edu" {
-//   items = {
-//     coffee = {
-//       id = 3
-//     }
-//     quantity = 2
-//   }
-// }
 
 resource "hashicups_order" "edu" {
   items = [{
