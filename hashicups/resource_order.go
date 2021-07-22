@@ -16,7 +16,7 @@ import (
 
 type resourceOrderType struct{}
 
-//Create the schema for the resource - what attributes are expected of a resource & what does it look like? Nested attributes feel weird
+// Order Resource schema
 func (r resourceOrderType) GetSchema(_ context.Context) (schema.Schema, []*tfprotov6.Diagnostic) {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{},
