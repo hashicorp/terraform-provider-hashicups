@@ -5,7 +5,9 @@ terraform {
       source  = "hashicorp.com/edu/hashicups"
     }
   }
+  required_version = "~> 1.0.3"
 }
+
 provider "hashicups" {
   username = "education"
   password = "test123"
