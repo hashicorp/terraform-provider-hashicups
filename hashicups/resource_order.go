@@ -212,10 +212,112 @@ func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 	}
 }
 
+
 // Update resource
 func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
+	// Get plan values
+	var plan Order
+	err := req.Plan.Get(ctx, &plan)
+	if err != nil {
+		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
+			Severity: tfprotov6.DiagnosticSeverityError,
+			Summary:  "Error reading plan",
+			Detail:   "An unexpected error was encountered while reading the plan: " + err.Error(),
+		})
+		return
+	}
+
+	// Get current state
+	var state Order
+	err = req.State.Get(ctx, &state)
+	if err != nil {
+		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
+			Severity: tfprotov6.DiagnosticSeverityError,
+			Summary:  "Error reading prior state",
+			Detail:   "An unexpected error was encountered while reading the prior state: " + err.Error(),
+		})
+		return
+	}
+
+	// Generate API request body from plan
+	var items []hashicups.OrderItem
+	for _, item := range plan.Items {
+		items = append(items, hashicups.OrderItem{
+			Coffee: hashicups.Coffee{
+				ID: item.Coffee.ID,
+			},
+			Quantity: item.Quantity,
+		})
+	}
+
+	// Get order ID from state
+	orderID := state.ID.Value
+
+	// Update order by calling API
+	order, err := r.p.client.UpdateOrder(orderID, items)
+
+	// Map response body to resource schema attribute
+	var ois []OrderItem
+	for _, oi := range order.Items {
+		ois = append(ois, OrderItem{
+			Coffee: Coffee{
+				ID:          oi.Coffee.ID,
+				Name:        types.String{Value: oi.Coffee.Name},
+				Teaser:      types.String{Value: oi.Coffee.Teaser},
+				Description: types.String{Value: oi.Coffee.Description},
+				Price:       types.Number{Value: big.NewFloat(oi.Coffee.Price)},
+				Image:       types.String{Value: oi.Coffee.Image},
+			},
+			Quantity: oi.Quantity,
+		})
+	}
+
+	// Generate resource state struct
+	var result = Order{
+		ID:          types.String{Value: strconv.Itoa(order.ID)},
+		Items:       ois,
+		LastUpdated: types.String{Value: string(time.Now().Format(time.RFC850))},
+	}
+
+	// Set state
+	err = resp.State.Set(ctx, result)
+	if err != nil {
+		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
+			Severity: tfprotov6.DiagnosticSeverityError,
+			Summary:  "Error setting state",
+			Detail:   "Could not set state, unexpected error: " + err.Error(),
+		})
+		return
+	}
 }
 
 // Delete resource
 func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
+	var state Order
+	err := req.State.Get(ctx, &state)
+	if err != nil {
+		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
+			Severity: tfprotov6.DiagnosticSeverityError,
+			Summary:  "Error reading configuration",
+			Detail:   "An unexpected error was encountered while reading the configuration: " + err.Error(),
+		})
+		return
+	}
+
+	// Get order ID from state
+	orderID := state.ID.Value
+
+	// Delete order by calling API
+	err = r.p.client.DeleteOrder(orderID)
+	if err != nil {
+		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
+			Severity: tfprotov6.DiagnosticSeverityError,
+			Summary:  "Error deleting order",
+			Detail:   "Could not delete orderID " + orderID + ": " + err.Error(),
+		})
+		return
+	}
+
+	// Remove resource from state
+	resp.State.RemoveResource(ctx)
 }
