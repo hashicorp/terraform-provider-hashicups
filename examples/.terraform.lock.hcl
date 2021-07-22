@@ -3,8 +3,8 @@
 
 provider "hashicorp.com/edu/hashicups" {
   version     = "0.3.2"
-  constraints = "0.3.2"
+  constraints = "~> 0.3.1"
   hashes = [
-    "h1:qkQRc70jSLUXC+I/TtDuT+kM79CTH+57rFotEQ1i2TI=",
+    "h1:EnzpTlDQa+1FB/qRZ508+cJPGtX2vy4GR1R9GmIZ8Ms=",
   ]
 }
