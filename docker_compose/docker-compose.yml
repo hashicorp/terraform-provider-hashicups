@@ -5,7 +5,7 @@ services:
     ports:
       - "19090:9090"
     volumes:
-      - ${PWD}/conf.json:/config/config.json
+      - ./conf.json:/config/config.json
     environment:
       CONFIG_FILE: '/config/config.json'
     depends_on:
