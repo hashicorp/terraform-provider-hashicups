@@ -7,23 +7,22 @@ import (
 	// "time"
 
 	// "github.com/hashicorp-demoapp/hashicups-client-go"
-	"github.com/hashicorp/terraform-plugin-framework/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	// "github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
 type resourceOrderType struct{}
 
 // Order Resource schema
-func (r resourceOrderType) GetSchema(_ context.Context) (schema.Schema, []*tfprotov6.Diagnostic) {
-	return schema.Schema{
-		Attributes: map[string]schema.Attribute{},
+func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+	return tfsdk.Schema{
+		Attributes: map[string]tfsdk.Attribute{},
 	}, nil
 }
 
 // New resource instance
-func (r resourceOrderType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, []*tfprotov6.Diagnostic) {
+func (r resourceOrderType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
 	return resourceOrder{
 		p: *(p.(*provider)),
 	}, nil
