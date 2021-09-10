@@ -5,23 +5,21 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/hashicorp/terraform-plugin-framework/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
 type dataSourceCoffeesType struct{}
 
-func (r dataSourceCoffeesType) GetSchema(_ context.Context) (schema.Schema, []*tfprotov6.Diagnostic) {
-	return schema.Schema{
-		Attributes: map[string]schema.Attribute{
+func (r dataSourceCoffeesType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+	return tfsdk.Schema{
+		Attributes: map[string]tfsdk.Attribute{
 			"coffees": {
 				// When Computed is true, the provider will set value --
 				// the user cannot define the value
 				Computed: true,
-				Attributes: schema.ListNestedAttributes(map[string]schema.Attribute{
+				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 					"id": {
 						Type:     types.NumberType,
 						Computed: true,
@@ -48,20 +46,20 @@ func (r dataSourceCoffeesType) GetSchema(_ context.Context) (schema.Schema, []*t
 					},
 					"ingredients": {
 						Computed: true,
-						Attributes: schema.ListNestedAttributes(map[string]schema.Attribute{
+						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 							"id": {
 								Type:     types.NumberType,
 								Computed: true,
 							},
-						}, schema.ListNestedAttributesOptions{}),
+						}, tfsdk.ListNestedAttributesOptions{}),
 					},
-				}, schema.ListNestedAttributesOptions{}),
+				}, tfsdk.ListNestedAttributesOptions{}),
 			},
 		},
 	}, nil
 }
 
-func (r dataSourceCoffeesType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, []*tfprotov6.Diagnostic) {
+func (r dataSourceCoffeesType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
 	return dataSourceCoffees{
 		p: *(p.(*provider)),
 	}, nil
@@ -79,10 +77,10 @@ func (r dataSourceCoffees) Read(ctx context.Context, req tfsdk.ReadDataSourceReq
 
 	coffees, err := r.p.client.GetCoffees()
 	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error retrieving coffee",
-		})
+		resp.Diagnostics.AddError(
+			"Error retrieving coffee",
+			err.Error(),
+		)
 		return
 	}
 
@@ -110,20 +108,16 @@ func (r dataSourceCoffees) Read(ctx context.Context, req tfsdk.ReadDataSourceReq
 	}
 
 	// Sample debug message
-	// To view this message, set the TF_LOG environment variable to DEBUG 
+	// To view this message, set the TF_LOG environment variable to DEBUG
 	// 		`export TF_LOG=DEBUG`
 	// To hide debug message, unset the environment variable
 	// 		`unset TF_LOG`
 	fmt.Fprintf(stderr, "[DEBUG]-Resource State:%+v", resourceState)
 
 	// Set state
-	err = resp.State.Set(ctx, &resourceState)
-	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error reading coffee",
-			Detail:   fmt.Sprintf("An unexpected error was encountered while reading the datasource_coffee: %+v", err.Error()),
-		})
+	diags := resp.State.Set(ctx, &resourceState)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 }
