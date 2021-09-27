@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 type resourceOrderType struct{}
@@ -297,4 +298,10 @@ func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 
 	// Remove resource from state
 	resp.State.RemoveResource(ctx)
+}
+
+// Import resource
+func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
+	// Save the import identifier in the id attribute
+	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), req, resp)
 }
