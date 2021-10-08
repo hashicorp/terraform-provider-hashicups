@@ -141,6 +141,8 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 
 	// Create a new HashiCups client and set it to the provider client
 	c, err := hashicups.NewClient(&host, &username, &password)
+	//	c, err := hashicups.NewClient(&host, &username, &password)
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to create client",
@@ -164,5 +166,6 @@ func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceTyp
 func (p *provider) GetDataSources(_ context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
 	return map[string]tfsdk.DataSourceType{
 		"hashicups_coffees": dataSourceCoffeesType{},
+		"hashicups_order":   dataSourceOrderType{},
 	}, nil
 }

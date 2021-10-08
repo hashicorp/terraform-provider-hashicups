@@ -1,0 +1,35 @@
+{ID:1 Name:{Unknown:false Null:false Value:Packer Spiced Latte}
+Teaser:{Unknown:false Null:false Value:Packed with goodness to spice up your images}
+Description:{Unknown:false Null:false Value:}
+Price:{Unknown:false Null:false Value:+350}
+Image:{Unknown:false Null:false Value:/packer.png}
+Ingredient:[{ID:1} {ID:2} {ID:4}]}
+{ID:2 Name:{Unknown:false Null:false Value:Vaulatte}
+Teaser:{Unknown:false Null:false Value:Nothing gives you a safe and secure feeling like a Vaulatte}
+Description:{Unknown:false Null:false Value:}
+Price:{Unknown:false Null:false Value:+200}
+Image:{Unknown:false Null:false Value:/vault.png}
+Ingredient:[{ID:1} {ID:2}]}
+{ID:3 Name:{Unknown:false Null:false Value:Nomadicano}
+Teaser:{Unknown:false Null:false Value:Drink one today and you will want to schedule another}
+Description:{Unknown:false Null:false Value:}
+Price:{Unknown:false Null:false Value:+150}
+Image:{Unknown:false Null:false Value:/nomad.png}
+Ingredient:[{ID:1} {ID:3}]}
+{ID:4 Name:{Unknown:false Null:false Value:Terraspresso}
+Teaser:{Unknown:false Null:false Value:Nothing kickstarts your day like a provision of Terraspresso}
+Description:{Unknown:false Null:false Value:}
+Price:{Unknown:false Null:false Value:+150}
+Image:{Unknown:false Null:false Value:terraform.png}
+Ingredient:[{ID:1}]}
+{ID:5 Name:{Unknown:false Null:false Value:Vagrante espresso}
+Teaser:{Unknown:false Null:false Value:Stdin is not a tty}
+Description:{Unknown:false Null:false Value:}
+Price:{Unknown:false Null:false Value:+200}
+Image:{Unknown:false Null:false Value:vagrant.png}
+Ingredient:[{ID:1}]}
+{ID:6 Name:{Unknown:false Null:false Value:Connectaccino}
+Teaser:{Unknown:false Null:false Value:Discover the wonders of our meshy service}
+Description:{Unknown:false Null:false Value:}
+Price:{Unknown:false Null:false Value:+250}
+Image:{Unknown:false Null:false Value:consul.png} Ingredient:[{ID:1} {ID:5}

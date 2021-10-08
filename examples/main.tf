@@ -26,6 +26,15 @@ resource "hashicups_order" "edu" {
   ]
 }
 
+data "hashicups_order" "order" {
+  id = 2
+}
+
+output "order" {
+  value = data.hashicups_order.order
+}
+
+
 output "edu_order" {
   value = hashicups_order.edu
 }

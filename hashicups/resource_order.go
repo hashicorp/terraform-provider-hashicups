@@ -298,3 +298,6 @@ func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 	// Remove resource from state
 	resp.State.RemoveResource(ctx)
 }
+
+func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
+}
