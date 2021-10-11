@@ -23,26 +23,7 @@ type provider struct {
 
 // GetSchema
 func (p *provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"host": {
-				Type:     types.StringType,
-				Optional: true,
-				Computed: true,
-			},
-			"username": {
-				Type:     types.StringType,
-				Optional: true,
-				Computed: true,
-			},
-			"password": {
-				Type:      types.StringType,
-				Optional:  true,
-				Computed:  true,
-				Sensitive: true,
-			},
-		},
-	}, nil
+	return tfsdk.Schema{}, nil
 }
 
 // Provider schema struct
@@ -141,7 +122,6 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 
 	// Create a new HashiCups client and set it to the provider client
 	c, err := hashicups.NewClient(&host, &username, &password)
-	//	c, err := hashicups.NewClient(&host, &username, &password)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -157,12 +137,12 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 
 // GetResources - Defines provider resources
 func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
-	return map[string]tfsdk.ResourceType{}, nil
+	return map[string]tfsdk.ResourceType{
+		"hashicups_order": resourceOrderType{},
+	}, nil
 }
 
 // GetDataSources - Defines provider data sources
 func (p *provider) GetDataSources(_ context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
-	return map[string]tfsdk.DataSourceType{
-		"hashicups_coffees": dataSourceCoffeesType{},
-	}, nil
+	return map[string]tfsdk.DataSourceType{}, nil
 }
