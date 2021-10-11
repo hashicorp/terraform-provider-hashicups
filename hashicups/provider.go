@@ -23,7 +23,26 @@ type provider struct {
 
 // GetSchema
 func (p *provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{}, nil
+	return tfsdk.Schema{
+		Attributes: map[string]tfsdk.Attribute{
+			"host": {
+				Type:     types.StringType,
+				Optional: true,
+				Computed: true,
+			},
+			"username": {
+				Type:     types.StringType,
+				Optional: true,
+				Computed: true,
+			},
+			"password": {
+				Type:      types.StringType,
+				Optional:  true,
+				Computed:  true,
+				Sensitive: true,
+			},
+		},
+	}, nil
 }
 
 // Provider schema struct
