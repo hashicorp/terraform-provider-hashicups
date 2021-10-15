@@ -14,14 +14,14 @@ provider "hashicups" {
 resource "hashicups_order" "edu" {
   items = [{
     coffee = {
-      id = 1
+      id = 3
     }
     quantity = 2
     }, {
     coffee = {
       id = 1
     }
-    quantity = 4
+    quantity = 2
     }
   ]
 }
