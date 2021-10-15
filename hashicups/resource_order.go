@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -202,6 +203,85 @@ func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 
 // Update resource
 func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
+	// Get plan values
+	var plan Order
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get current state
+	var state Order
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Generate API request body from plan
+	var items []hashicups.OrderItem
+	for _, item := range plan.Items {
+		items = append(items, hashicups.OrderItem{
+			Coffee: hashicups.Coffee{
+				ID: item.Coffee.ID,
+			},
+			Quantity: item.Quantity,
+		})
+	}
+
+	// Get order ID from state
+	orderID := state.ID.Value
+
+	// Update order by calling API
+	_, err := r.p.client.UpdateOrder(orderID, items)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error update order",
+			"Could not update orderID "+orderID+": "+err.Error(),
+		)
+		return
+	}
+
+	// Get order current value
+	order, err := r.p.client.GetOrder(orderID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading order",
+			"Could not read orderID "+orderID+": "+err.Error(),
+		)
+		return
+	}
+
+	// Map response body to resource schema attribute
+	var ois []OrderItem
+	for _, oi := range order.Items {
+		ois = append(ois, OrderItem{
+			Coffee: Coffee{
+				ID:          oi.Coffee.ID,
+				Name:        types.String{Value: oi.Coffee.Name},
+				Teaser:      types.String{Value: oi.Coffee.Teaser},
+				Description: types.String{Value: oi.Coffee.Description},
+				Price:       types.Number{Value: big.NewFloat(oi.Coffee.Price)},
+				Image:       types.String{Value: oi.Coffee.Image},
+			},
+			Quantity: oi.Quantity,
+		})
+	}
+
+	// Generate resource state struct
+	result := Order{
+		ID:          types.String{Value: strconv.Itoa(order.ID)},
+		Items:       ois,
+		LastUpdated: types.String{Value: string(time.Now().Format(time.RFC850))},
+	}
+
+	// Set state
+	diags = resp.State.Set(ctx, result)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete resource
