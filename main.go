@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"terraform-provider-hashicups-pf/hashicups"
+
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 func main() {

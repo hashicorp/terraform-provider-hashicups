@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	//
 )
 
 type resourceOrderType struct{}
@@ -203,7 +205,8 @@ func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 
 // Update resource
 func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
-	// Get plan values
+
+	// Retrieve the changes proposed in the execution plan
 	var plan Order
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
@@ -211,7 +214,7 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	// Get current state
+	// Retrieve the current state values
 	var state Order
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -219,7 +222,7 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	// Generate API request body from plan
+	// Retrieve the item changes from the proposed plan
 	var items []hashicups.OrderItem
 	for _, item := range plan.Items {
 		items = append(items, hashicups.OrderItem{
@@ -230,11 +233,11 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		})
 	}
 
-	// Get order ID from state
+	// Retrieve the current ID of the order to be updated from the state file
 	orderID := state.ID.Value
 
-	// Update order by calling API
-	order, err := r.p.client.UpdateOrder(orderID, items)
+	// Call the update function to retrieve the items. Discard the value of the #TODO...
+	_, err := r.p.client.UpdateOrder(orderID, items)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error update order",
@@ -243,7 +246,17 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	// Map response body to resource schema attribute
+	// Retrieve the order ID information from the API
+	order, err := r.p.client.GetOrder(orderID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading order",
+			"Could not read orderID "+orderID+": "+err.Error(),
+		)
+		return
+	}
+
+	// Retrieve the order response based on the orderID changes from the `GetOrder` client function
 	var ois []OrderItem
 	for _, oi := range order.Items {
 		ois = append(ois, OrderItem{
@@ -259,14 +272,14 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		})
 	}
 
-	// Generate resource state struct
-	var result = Order{
+	// Wrap the results from the order in the Terraform schema with the items and new computed values
+	result := Order{
 		ID:          types.String{Value: strconv.Itoa(order.ID)},
 		Items:       ois,
 		LastUpdated: types.String{Value: string(time.Now().Format(time.RFC850))},
 	}
 
-	// Set state
+	// Write the response result variable to state
 	diags = resp.State.Set(ctx, result)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -276,28 +289,6 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 
 // Delete resource
 func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
-	var state Order
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Get order ID from state
-	orderID := state.ID.Value
-
-	// Delete order by calling API
-	err := r.p.client.DeleteOrder(orderID)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error deleting order",
-			"Could not delete orderID "+orderID+": "+err.Error(),
-		)
-		return
-	}
-
-	// Remove resource from state
-	resp.State.RemoveResource(ctx)
 }
 
 // Import resource
