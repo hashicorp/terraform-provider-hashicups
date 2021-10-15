@@ -289,6 +289,28 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 
 // Delete resource
 func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
+	var state Order
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get order ID from state
+	orderID := state.ID.Value
+
+	// Delete order by calling API
+	err := r.p.client.DeleteOrder(orderID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error deleting order",
+			"Could not delete orderID "+orderID+": "+err.Error(),
+		)
+		return
+	}
+
+	// Remove resource from state
+	resp.State.RemoveResource(ctx)
 }
 
 // Import resource
