@@ -125,7 +125,7 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 		return
 	}
 
-	// for more information on logging from providers, see
+	// for more information on logging from providers, refer to
 	// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-log/tflog
 	tflog.Trace(ctx, "created order", "order_id", order.ID)
 
