@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type resourceOrderType struct{}
@@ -123,6 +124,10 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 		)
 		return
 	}
+
+	// for more information on logging from providers, refer to
+	// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-log/tflog
+	tflog.Trace(ctx, "created order", "order_id", order.ID)
 
 	// Map response body to resource schema attribute
 	var ois []OrderItem
