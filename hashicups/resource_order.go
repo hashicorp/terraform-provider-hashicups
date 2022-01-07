@@ -47,3 +47,9 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 // Delete resource
 func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
 }
+
+// Import resource
+func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
+	// Save the import identifier in the id attribute
+	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), req, resp)
+}
