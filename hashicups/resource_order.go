@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -25,6 +26,14 @@ func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 				// When Computed is true, the provider will set value --
 				// the user cannot define the value
 				Computed: true,
+			},
+			"unused_boolean_value": {
+				Optional: true,
+				Type:     types.BoolType,
+				PlanModifiers: []tfsdk.AttributePlanModifier{genericDefaultValueModifier{
+					Type:  types.BoolType,
+					Value: false,
+				}},
 			},
 			"last_updated": {
 				Type:     types.StringType,
@@ -309,4 +318,47 @@ func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
 	// Save the import identifier in the id attribute
 	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), req, resp)
+}
+
+type genericDefaultValueModifier struct {
+	Value interface{}
+	Type  attr.Type
+}
+
+func (t genericDefaultValueModifier) Description(ctx context.Context) string {
+	return "This plan modifier is for use during testing only"
+}
+
+func (t genericDefaultValueModifier) MarkdownDescription(ctx context.Context) string {
+	return "This plan modifier is for use during testing only"
+}
+
+func (t genericDefaultValueModifier) Modify(ctx context.Context, req tfsdk.ModifyAttributePlanRequest, res *tfsdk.ModifyAttributePlanResponse) {
+	// tflog.Info(ctx, "genericDefaultValueModifier -> Modify")
+
+	// tflog.Info(ctx, "genericDefaultValueModifier -> Modify", "attrState", req.AttributeState, "attrConfig", req.AttributeConfig)
+	if req.AttributeState == nil && req.AttributeConfig == nil {
+		return
+	}
+
+	// tflog.Info(ctx, "genericDefaultValueModifier -> Modify", "Type", t.Type)
+	switch t.Type {
+	case types.BoolType:
+		configVal := req.AttributeConfig.(types.Bool)
+		// tflog.Info(ctx, "genericDefaultValueModifier -> Modify", "configVal", configVal)
+
+		if configVal.Null {
+			res.AttributePlan = types.Bool{Value: t.Value.(bool)}
+		}
+		// tflog.Info(ctx, "genericDefaultValueModifier -> Modify", "attrPlan", res.AttributePlan)
+	case types.StringType:
+		configVal := req.AttributeConfig.(types.String)
+
+		if configVal.Null {
+			res.AttributePlan = types.String{Value: t.Value.(string)}
+		}
+	}
+	// TODO case types.Float64Type:
+	// TODO case types.Int64Type:
+	// TODO case types.NumberType:
 }
