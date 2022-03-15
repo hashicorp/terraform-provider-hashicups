@@ -25,6 +25,9 @@ func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 				// When Computed is true, the provider will set value --
 				// the user cannot define the value
 				Computed: true,
+				PlanModifiers: []tfsdk.AttributePlanModifier{
+					tfsdk.UseStateForUnknown(),
+				},
 			},
 			"last_updated": {
 				Type:     types.StringType,
