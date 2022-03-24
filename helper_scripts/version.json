@@ -1,0 +1,10 @@
+{
+    "data": {
+      "type": "registry-provider-versions",
+      "attributes": {
+        "version": "0.1.0",
+        "key-id": "<YOUR_KEY_ID>",
+        "protocols": ["6.0"]
+      }
+    }
+  }

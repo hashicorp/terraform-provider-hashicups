@@ -1,0 +1,11 @@
+{
+    "data": {
+      "type": "registry-provider-version-platforms",
+      "attributes": {
+        "os": "linux",
+        "arch": "amd64",
+        "shasum": "<YOUR_SHASUM_VALUE>",
+        "filename": "terraform-provider-hashicups-pf<YOUR_PLATFORM_VERSION>"
+      }
+    }
+  }

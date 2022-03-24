@@ -1,0 +1,10 @@
+{
+    "data": {
+      "type": "registry-providers",
+      "attributes": {
+        "name": "hashicups",
+        "namespace": "<YOUR_ORG_NAME>",
+        "registry-name": "private"
+      }
+    }
+  }
