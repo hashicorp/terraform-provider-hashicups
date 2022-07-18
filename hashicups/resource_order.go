@@ -69,7 +69,7 @@ func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 							},
 						}),
 					},
-				}, tfsdk.ListNestedAttributesOptions{}),
+				}),
 			},
 		},
 	}, nil
@@ -127,7 +127,7 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 
 	// for more information on logging from providers, refer to
 	// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-log/tflog
-	tflog.Trace(ctx, "created order", "order_id", order.ID)
+	tflog.Trace(ctx, "created order", map[string]interface{}{"order_id": order.ID})
 
 	// Map response body to resource schema attribute
 	var ois []OrderItem
