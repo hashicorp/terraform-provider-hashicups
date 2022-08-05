@@ -5,10 +5,9 @@ import (
 	"os"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
-	"github.com/hashicorp/terraform-plugin-framework/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
 var stderr = os.Stderr
@@ -23,9 +22,9 @@ type provider struct {
 }
 
 // GetSchema
-func (p *provider) GetSchema(_ context.Context) (schema.Schema, []*tfprotov6.Diagnostic) {
-	return schema.Schema{
-		Attributes: map[string]schema.Attribute{
+func (p *provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+	return tfsdk.Schema{
+		Attributes: map[string]tfsdk.Attribute{
 			"host": {
 				Type:     types.StringType,
 				Optional: true,
@@ -56,13 +55,9 @@ type providerData struct {
 func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderRequest, resp *tfsdk.ConfigureProviderResponse) {
 	// Retrieve provider data from configuration
 	var config providerData
-	err := req.Config.Get(ctx, &config)
-	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error parsing configuration",
-			Detail:   "Error parsing the configuration, this is an error in the provider. Please report the following to the provider developer:\n\n" + err.Error(),
-		})
+	diags := req.Config.Get(ctx, &config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -70,11 +65,10 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	var username string
 	if config.Username.Unknown {
 		// Cannot connect to client with an unknown value
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityWarning,
-			Summary:  "Unable to create client",
-			Detail:   "Cannot use unknown value as username",
-		})
+		resp.Diagnostics.AddWarning(
+			"Unable to create client",
+			"Cannot use unknown value as username",
+		)
 		return
 	}
 
@@ -85,23 +79,22 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	}
 
 	if username == "" {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			// Error vs warning - empty value must stop execution
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Unable to find username",
-			Detail:   "Username cannot be an empty string",
-		})
+		// Error vs warning - empty value must stop execution
+		resp.Diagnostics.AddError(
+			"Unable to find username",
+			"Username cannot be an empty string",
+		)
+		return
 	}
 
 	// User must provide a password to the provider
 	var password string
 	if config.Password.Unknown {
 		// Cannot connect to client with an unknown value
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityWarning,
-			Summary:  "Unable to create client",
-			Detail:   "Cannot use unknown value as password",
-		})
+		resp.Diagnostics.AddError(
+			"Unable to create client",
+			"Cannot use unknown value as password",
+		)
 		return
 	}
 
@@ -112,23 +105,22 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	}
 
 	if password == "" {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			// Error vs warning - empty value must stop execution
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Unable to find password",
-			Detail:   "password cannot be an empty string",
-		})
+		// Error vs warning - empty value must stop execution
+		resp.Diagnostics.AddError(
+			"Unable to find password",
+			"password cannot be an empty string",
+		)
+		return
 	}
 
 	// User must specify a host
 	var host string
 	if config.Host.Unknown {
 		// Cannot connect to client with an unknown value
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityWarning,
-			Summary:  "Unable to create client",
-			Detail:   "Cannot use unknown value as host",
-		})
+		resp.Diagnostics.AddError(
+			"Unable to create client",
+			"Cannot use unknown value as host",
+		)
 		return
 	}
 
@@ -139,22 +131,21 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	}
 
 	if host == "" {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			// Error vs warning - empty value must stop execution
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Unable to find host",
-			Detail:   "Host cannot be an empty string",
-		})
+		// Error vs warning - empty value must stop execution
+		resp.Diagnostics.AddError(
+			"Unable to find host",
+			"Host cannot be an empty string",
+		)
+		return
 	}
 
 	// Create a new HashiCups client and set it to the provider client
 	c, err := hashicups.NewClient(&host, &username, &password)
 	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Unable to create client",
-			Detail:   "Unable to create hashicups client:\n\n" + err.Error(),
-		})
+		resp.Diagnostics.AddError(
+			"Unable to create client",
+			"Unable to create hashicups client:\n\n"+err.Error(),
+		)
 		return
 	}
 
@@ -163,13 +154,12 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 }
 
 // GetResources - Defines provider resources
-func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceType, []*tfprotov6.Diagnostic) {
+func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
 	return map[string]tfsdk.ResourceType{
 		"hashicups_order": resourceOrderType{},
 	}, nil
 }
 
-// GetDataSources - Defines provider data sources
-func (p *provider) GetDataSources(_ context.Context) (map[string]tfsdk.DataSourceType, []*tfprotov6.Diagnostic) {
-	return map[string]tfsdk.DataSourceType{}, nil
-}
+func (p *provider) GetDataSources(_ context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
+		return map[string]tfsdk.DataSourceType{}, nil
+	}
