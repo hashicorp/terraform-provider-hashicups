@@ -7,41 +7,42 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
-	"github.com/hashicorp/terraform-plugin-framework/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type resourceOrderType struct{}
 
 // Order Resource schema
-func (r resourceOrderType) GetSchema(_ context.Context) (schema.Schema, []*tfprotov6.Diagnostic) {
-	return schema.Schema{
-		Attributes: map[string]schema.Attribute{
+func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+	return tfsdk.Schema{
+		Attributes: map[string]tfsdk.Attribute{
 			"id": {
-				Type:     types.StringType,
+				Type: types.StringType,
 				// When Computed is true, the provider will set value --
 				// the user cannot define the value
 				Computed: true,
 			},
 			"last_updated": {
-				Type: types.StringType,
+				Type:     types.StringType,
 				Computed: true,
 			},
 			"items": {
-				// If Required is true, Terraform will throw error if user 
-				// doesn't specify value 
+				// If Required is true, Terraform will throw error if user
+				// doesn't specify value
 				// If Optional is true, user can choose to supply a value
 				Required: true,
-				Attributes: schema.ListNestedAttributes(map[string]schema.Attribute{
+				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 					"quantity": {
 						Type:     types.NumberType,
 						Required: true,
 					},
 					"coffee": {
 						Required: true,
-						Attributes: schema.SingleNestedAttributes(map[string]schema.Attribute{
+						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
 							"id": {
 								Type:     types.NumberType,
 								Required: true,
@@ -68,14 +69,14 @@ func (r resourceOrderType) GetSchema(_ context.Context) (schema.Schema, []*tfpro
 							},
 						}),
 					},
-				}, schema.ListNestedAttributesOptions{}),
+				}),
 			},
 		},
 	}, nil
 }
 
 // New resource instance
-func (r resourceOrderType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, []*tfprotov6.Diagnostic) {
+func (r resourceOrderType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
 	return resourceOrder{
 		p: *(p.(*provider)),
 	}, nil
@@ -88,23 +89,18 @@ type resourceOrder struct {
 // Create a new resource
 func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceRequest, resp *tfsdk.CreateResourceResponse) {
 	if !r.p.configured {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Provider not configured",
-			Detail:   "The provider hasn't been configured before apply, likely because it depends on an unknown value from another resource. This leads to weird stuff happening, so we'd prefer if you didn't do that. Thanks!",
-		})
+		resp.Diagnostics.AddError(
+			"Provider not configured",
+			"The provider hasn't been configured before apply, likely because it depends on an unknown value from another resource. This leads to weird stuff happening, so we'd prefer if you didn't do that. Thanks!",
+		)
 		return
 	}
 
 	// Retrieve values from plan
 	var plan Order
-	err := req.Plan.Get(ctx, &plan)
-	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error reading plan",
-			Detail:   "An unexpected error was encountered while reading the plan: " + err.Error(),
-		})
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -122,13 +118,16 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 	// Create new order
 	order, err := r.p.client.CreateOrder(items)
 	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error creating order",
-			Detail:   "Could not create order, unexpected error: " + err.Error(),
-		})
+		resp.Diagnostics.AddError(
+			"Error creating order",
+			"Could not create order, unexpected error: "+err.Error(),
+		)
 		return
 	}
+
+	// for more information on logging from providers, refer to
+	// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-log/tflog
+	tflog.Trace(ctx, "created order", map[string]interface{}{"order_id": order.ID})
 
 	// Map response body to resource schema attribute
 	var ois []OrderItem
@@ -153,13 +152,9 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 		LastUpdated: types.String{Value: string(time.Now().Format(time.RFC850))},
 	}
 
-	err = resp.State.Set(ctx, result)
-	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error setting state",
-			Detail:   "Could not set state, unexpected error: " + err.Error(),
-		})
+	diags = resp.State.Set(ctx, result)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 }
@@ -168,13 +163,9 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, resp *tfsdk.ReadResourceResponse) {
 	// Get current state
 	var state Order
-	err := req.State.Get(ctx, &state)
-	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error reading state",
-			Detail:   "An unexpected error was encountered while reading the state: " + err.Error(),
-		})
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -183,6 +174,13 @@ func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 
 	// Get order current value
 	order, err := r.p.client.GetOrder(orderID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading order",
+			"Could not read orderID "+orderID+": "+err.Error(),
+		)
+		return
+	}
 
 	// Map response body to resource schema attribute
 	state.Items = []OrderItem{}
@@ -201,13 +199,9 @@ func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 	}
 
 	// Set state
-	err = resp.State.Set(ctx, &state)
-	if err != nil {
-		resp.Diagnostics = append(resp.Diagnostics, &tfprotov6.Diagnostic{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "Error setting state",
-			Detail:   "Unexpected error encountered trying to set new state: " + err.Error(),
-		})
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 }
@@ -218,4 +212,10 @@ func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 
 // Delete resource
 func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
+}
+
+// Import resource
+func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
+	// Save the import identifier in the id attribute
+	tfsdk.ResourceImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
