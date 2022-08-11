@@ -51,9 +51,9 @@ func (r dataSourceCoffeesType) GetSchema(_ context.Context) (tfsdk.Schema, diag.
 								Type:     types.NumberType,
 								Computed: true,
 							},
-						}, tfsdk.ListNestedAttributesOptions{}),
+						}),
 					},
-				}, tfsdk.ListNestedAttributesOptions{}),
+				}),
 			},
 		},
 	}, nil

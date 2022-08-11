@@ -8,9 +8,9 @@ import (
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -69,7 +69,7 @@ func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 							},
 						}),
 					},
-				}, tfsdk.ListNestedAttributesOptions{}),
+				}),
 			},
 		},
 	}, nil
@@ -127,7 +127,7 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 
 	// for more information on logging from providers, refer to
 	// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-log/tflog
-	tflog.Trace(ctx, "created order", "order_id", order.ID)
+	tflog.Trace(ctx, "created order", map[string]interface{}{"order_id": order.ID})
 
 	// Map response body to resource schema attribute
 	var ois []OrderItem
@@ -308,5 +308,5 @@ func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 // Import resource
 func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
 	// Save the import identifier in the id attribute
-	tfsdk.ResourceImportStatePassthroughID(ctx, tftypes.NewAttributePath().WithAttributeName("id"), req, resp)
+	tfsdk.ResourceImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
