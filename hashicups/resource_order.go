@@ -7,50 +7,67 @@ import (
 	// "time"
 
 	// "github.com/hashicorp-demoapp/hashicups-client-go"
+	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	// "github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type resourceOrderType struct{}
+// Ensure the implementation satisfies the expected interfaces.
+var (
+	_ resource.Resource                = &orderResource{}
+	_ resource.ResourceWithConfigure   = &orderResource{}
+	_ resource.ResourceWithImportState = &orderResource{}
+)
+
+func NewOrderResource() resource.Resource {
+	return &orderResource{}
+}
+
+type orderResource struct {
+	client *hashicups.Client
+}
+
+func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_order"
+}
 
 // Order Resource schema
-func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r *orderResource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{},
 	}, nil
 }
 
-// New resource instance
-func (r resourceOrderType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return resourceOrder{
-		p: *(p.(*provider)),
-	}, nil
-}
+// Configure resource instance
+func (r *orderResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
 
-type resourceOrder struct {
-	p provider
+	r.client = req.ProviderData.(*hashicups.Client)
 }
 
 // Create a new resource
-func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceRequest, resp *tfsdk.CreateResourceResponse) {
+func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 }
 
 // Read resource information
-func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, resp *tfsdk.ReadResourceResponse) {
+func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 }
 
 // Update resource
-func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
+func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 }
 
 // Delete resource
-func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
+func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 }
 
 // Import resource
-func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
+func (r *orderResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Save the import identifier in the id attribute
-	tfsdk.ResourceImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
