@@ -9,15 +9,33 @@ import (
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-type resourceOrderType struct{}
+// Ensure the implementation satisfies the expected interfaces.
+var (
+	_ resource.Resource                = &orderResource{}
+	_ resource.ResourceWithConfigure   = &orderResource{}
+	_ resource.ResourceWithImportState = &orderResource{}
+)
+
+func NewOrderResource() resource.Resource {
+	return &orderResource{}
+}
+
+type orderResource struct {
+	client *hashicups.Client
+}
+
+func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_order"
+}
 
 // Order Resource schema
-func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r *orderResource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
@@ -75,22 +93,20 @@ func (r resourceOrderType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 	}, nil
 }
 
-// New resource instance
-func (r resourceOrderType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return resourceOrder{
-		p: *(p.(*provider)),
-	}, nil
-}
+// Configure resource instance
+func (r *orderResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
 
-type resourceOrder struct {
-	p provider
+	r.client = req.ProviderData.(*hashicups.Client)
 }
 
 // Create a new resource
-func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceRequest, resp *tfsdk.CreateResourceResponse) {
-	if !r.p.configured {
+func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	if r.client == nil {
 		resp.Diagnostics.AddError(
-			"Provider not configured",
+			"Client not configured",
 			"The provider hasn't been configured before apply, likely because it depends on an unknown value from another resource. This leads to weird stuff happening, so we'd prefer if you didn't do that. Thanks!",
 		)
 		return
@@ -116,7 +132,7 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 	}
 
 	// Create new order
-	order, err := r.p.client.CreateOrder(items)
+	order, err := r.client.CreateOrder(items)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating order",
@@ -160,7 +176,7 @@ func (r resourceOrder) Create(ctx context.Context, req tfsdk.CreateResourceReque
 }
 
 // Read resource information
-func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, resp *tfsdk.ReadResourceResponse) {
+func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get current state
 	var state Order
 	diags := req.State.Get(ctx, &state)
@@ -173,7 +189,7 @@ func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 	orderID := state.ID.Value
 
 	// Get order current value
-	order, err := r.p.client.GetOrder(orderID)
+	order, err := r.client.GetOrder(orderID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading order",
@@ -207,15 +223,15 @@ func (r resourceOrder) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 }
 
 // Update resource
-func (r resourceOrder) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
+func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 }
 
 // Delete resource
-func (r resourceOrder) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
+func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 }
 
 // Import resource
-func (r resourceOrder) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
+func (r *orderResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Save the import identifier in the id attribute
-	tfsdk.ResourceImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

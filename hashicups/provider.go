@@ -5,24 +5,32 @@ import (
 	"os"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var stderr = os.Stderr
+// Ensure the implementation satisfies the expected interfaces
+var (
+	_ provider.Provider             = &hashicupsProvider{}
+	_ provider.ProviderWithMetadata = &hashicupsProvider{}
+)
 
-func New() tfsdk.Provider {
-	return &provider{}
+func New() provider.Provider {
+	return &hashicupsProvider{}
 }
 
-type provider struct {
-	configured bool
-	client     *hashicups.Client
+type hashicupsProvider struct{}
+
+func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "hashicups"
 }
 
 // GetSchema
-func (p *provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p *hashicupsProvider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"host": {
@@ -52,7 +60,7 @@ type providerData struct {
 	Password types.String `tfsdk:"password"`
 }
 
-func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderRequest, resp *tfsdk.ConfigureProviderResponse) {
+func (p *hashicupsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Retrieve provider data from configuration
 	var config providerData
 	diags := req.Config.Get(ctx, &config)
@@ -140,7 +148,7 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	}
 
 	// Create a new HashiCups client and set it to the provider client
-	c, err := hashicups.NewClient(&host, &username, &password)
+	client, err := hashicups.NewClient(&host, &username, &password)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to create client",
@@ -149,17 +157,19 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 		return
 	}
 
-	p.client = c
-	p.configured = true
+	// Make the HashiCups client available during DataSource and Resource
+	// type Configure methods.
+	resp.DataSourceData = client
+	resp.ResourceData = client
 }
 
 // GetResources - Defines provider resources
-func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
-	return map[string]tfsdk.ResourceType{
-		"hashicups_order": resourceOrderType{},
-	}, nil
+func (p *hashicupsProvider) Resources(_ context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		NewOrderResource,
+	}
 }
 
-func (p *provider) GetDataSources(_ context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
-		return map[string]tfsdk.DataSourceType{}, nil
-	}
+func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+	return nil
+}
