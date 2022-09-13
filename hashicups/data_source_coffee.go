@@ -2,17 +2,35 @@ package hashicups
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
+	"github.com/hashicorp-demoapp/hashicups-client-go"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-type dataSourceCoffeesType struct{}
+// Ensure the implementation satifies the expected interfaces.
+var (
+	_ datasource.DataSource              = &coffeesDataSource{}
+	_ datasource.DataSourceWithConfigure = &coffeesDataSource{}
+)
 
-func (r dataSourceCoffeesType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func NewCoffeesDataSource() datasource.DataSource {
+	return &coffeesDataSource{}
+}
+
+type coffeesDataSource struct {
+	client *hashicups.Client
+}
+
+func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_coffees"
+}
+
+func (d *coffeesDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"coffees": {
@@ -59,23 +77,21 @@ func (r dataSourceCoffeesType) GetSchema(_ context.Context) (tfsdk.Schema, diag.
 	}, nil
 }
 
-func (r dataSourceCoffeesType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return dataSourceCoffees{
-		p: *(p.(*provider)),
-	}, nil
+func (d *coffeesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	d.client = req.ProviderData.(*hashicups.Client)
 }
 
-type dataSourceCoffees struct {
-	p provider
-}
-
-func (r dataSourceCoffees) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
+func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	// Declare struct that this function will set to this data source's state
 	var resourceState struct {
 		Coffees []CoffeeIngredients `tfsdk:"coffees"`
 	}
 
-	coffees, err := r.p.client.GetCoffees()
+	coffees, err := d.client.GetCoffees()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving coffee",
@@ -107,12 +123,9 @@ func (r dataSourceCoffees) Read(ctx context.Context, req tfsdk.ReadDataSourceReq
 		resourceState.Coffees = append(resourceState.Coffees, c)
 	}
 
-	// Sample debug message
-	// To view this message, set the TF_LOG environment variable to DEBUG
-	// 		`export TF_LOG=DEBUG`
-	// To hide debug message, unset the environment variable
-	// 		`unset TF_LOG`
-	fmt.Fprintf(stderr, "[DEBUG]-Resource State:%+v", resourceState)
+	// for more information on logging from providers, refer to
+	// https://terraform.io/plugin/log
+	tflog.Trace(ctx, "Found coffees", map[string]any{"coffee_count": len(resourceState.Coffees)})
 
 	// Set state
 	diags := resp.State.Set(ctx, &resourceState)
