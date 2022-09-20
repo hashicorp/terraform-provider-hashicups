@@ -56,44 +56,55 @@ func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataR
 // GetSchema defines the schema for the data source.
 func (d *coffeesDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
+		Description: "Fetches the list of coffees.",
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
-				Computed: true,
-				Type:     types.StringType,
+				Description: "Placeholder identifier attribute.",
+				Computed:    true,
+				Type:        types.StringType,
 			},
 			"coffees": {
-				Computed: true,
+				Description: "List of coffees.",
+				Computed:    true,
 				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 					"id": {
-						Type:     types.Int64Type,
-						Computed: true,
+						Description: "Numeric identifier of the coffee.",
+						Type:        types.Int64Type,
+						Computed:    true,
 					},
 					"name": {
-						Type:     types.StringType,
-						Computed: true,
+						Description: "Product name of the coffee.",
+						Type:        types.StringType,
+						Computed:    true,
 					},
 					"teaser": {
-						Type:     types.StringType,
-						Computed: true,
+						Description: "Fun tagline for the coffee.",
+						Type:        types.StringType,
+						Computed:    true,
 					},
 					"description": {
-						Type:     types.StringType,
-						Computed: true,
+						Description: "Product description of the coffee.",
+						Type:        types.StringType,
+						Computed:    true,
 					},
 					"price": {
-						Type:     types.Float64Type,
-						Computed: true,
+						Description: "Suggested cost of the coffee.",
+						Type:        types.Float64Type,
+						Computed:    true,
 					},
 					"image": {
-						Type:     types.StringType,
-						Computed: true,
+						Description: "URI for an image of the coffee.",
+						Type:        types.StringType,
+						Computed:    true,
 					},
 					"ingredients": {
-						Computed: true,
+						Description: "List of ingredients in the coffee.",
+						Computed:    true,
 						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 							"id": {
-								Type:     types.Int64Type,
-								Computed: true,
+								Description: "Numeric identifier of the coffee ingredient.",
+								Type:        types.Int64Type,
+								Computed:    true,
 							},
 						}),
 					},

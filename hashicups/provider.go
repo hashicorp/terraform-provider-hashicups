@@ -43,19 +43,23 @@ func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataReque
 // GetSchema defines the provider-level schema for configuration data.
 func (p *hashicupsProvider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
+		Description: "Interact with HashiCups.",
 		Attributes: map[string]tfsdk.Attribute{
 			"host": {
-				Type:     types.StringType,
-				Optional: true,
+				Description: "URI for HashiCups API. May also be provided via HASHICUPS_HOST environment variable.",
+				Type:        types.StringType,
+				Optional:    true,
 			},
 			"username": {
-				Type:     types.StringType,
-				Optional: true,
+				Description: "Username for HashiCups API. May also be provided via HASHICUPS_USERNAME environment variable.",
+				Type:        types.StringType,
+				Optional:    true,
 			},
 			"password": {
-				Type:      types.StringType,
-				Optional:  true,
-				Sensitive: true,
+				Description: "Password for HashiCups API. May also be provided via HASHICUPS_PASSWORD environment variable.",
+				Type:        types.StringType,
+				Optional:    true,
+				Sensitive:   true,
 			},
 		},
 	}, nil
