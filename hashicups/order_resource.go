@@ -137,9 +137,9 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	for _, item := range plan.Items {
 		items = append(items, hashicups.OrderItem{
 			Coffee: hashicups.Coffee{
-				ID: int(item.Coffee.ID.Value),
+				ID: int(item.Coffee.ID.ValueInt64()),
 			},
-			Quantity: int(item.Quantity.Value),
+			Quantity: int(item.Quantity.ValueInt64()),
 		})
 	}
 
@@ -154,21 +154,21 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.String{Value: strconv.Itoa(order.ID)}
+	plan.ID = types.StringValue(strconv.Itoa(order.ID))
 	for itemIndex, item := range order.Items {
 		plan.Items[itemIndex] = orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64{Value: int64(item.Coffee.ID)},
-				Name:        types.String{Value: item.Coffee.Name},
-				Teaser:      types.String{Value: item.Coffee.Teaser},
-				Description: types.String{Value: item.Coffee.Description},
-				Price:       types.Float64{Value: item.Coffee.Price},
-				Image:       types.String{Value: item.Coffee.Image},
+				ID:          types.Int64Value(int64(item.Coffee.ID)),
+				Name:        types.StringValue(item.Coffee.Name),
+				Teaser:      types.StringValue(item.Coffee.Teaser),
+				Description: types.StringValue(item.Coffee.Description),
+				Price:       types.Float64Value(item.Coffee.Price),
+				Image:       types.StringValue(item.Coffee.Image),
 			},
-			Quantity: types.Int64{Value: int64(item.Quantity)},
+			Quantity: types.Int64Value(int64(item.Quantity)),
 		}
 	}
-	plan.LastUpdated = types.String{Value: string(time.Now().Format(time.RFC850))}
+	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -189,11 +189,11 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	// Get refreshed order value from HashiCups
-	order, err := r.client.GetOrder(state.ID.Value)
+	order, err := r.client.GetOrder(state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups Order",
-			"Could not read HashiCups order ID "+state.ID.Value+": "+err.Error(),
+			"Could not read HashiCups order ID "+state.ID.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -203,14 +203,14 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	for _, item := range order.Items {
 		state.Items = append(state.Items, orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64{Value: int64(item.Coffee.ID)},
-				Name:        types.String{Value: item.Coffee.Name},
-				Teaser:      types.String{Value: item.Coffee.Teaser},
-				Description: types.String{Value: item.Coffee.Description},
-				Price:       types.Float64{Value: item.Coffee.Price},
-				Image:       types.String{Value: item.Coffee.Image},
+				ID:          types.Int64Value(int64(item.Coffee.ID)),
+				Name:        types.StringValue(item.Coffee.Name),
+				Teaser:      types.StringValue(item.Coffee.Teaser),
+				Description: types.StringValue(item.Coffee.Description),
+				Price:       types.Float64Value(item.Coffee.Price),
+				Image:       types.StringValue(item.Coffee.Image),
 			},
-			Quantity: types.Int64{Value: int64(item.Quantity)},
+			Quantity: types.Int64Value(int64(item.Quantity)),
 		})
 	}
 
@@ -237,14 +237,14 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	for _, item := range plan.Items {
 		hashicupsItems = append(hashicupsItems, hashicups.OrderItem{
 			Coffee: hashicups.Coffee{
-				ID: int(item.Coffee.ID.Value),
+				ID: int(item.Coffee.ID.ValueInt64()),
 			},
-			Quantity: int(item.Quantity.Value),
+			Quantity: int(item.Quantity.ValueInt64()),
 		})
 	}
 
 	// Update existing order
-	_, err := r.client.UpdateOrder(plan.ID.Value, hashicupsItems)
+	_, err := r.client.UpdateOrder(plan.ID.ValueString(), hashicupsItems)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating HashiCups Order",
@@ -255,11 +255,11 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	// Fetch updated items from GetOrder as UpdateOrder items are not
 	// populated.
-	order, err := r.client.GetOrder(plan.ID.Value)
+	order, err := r.client.GetOrder(plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups Order",
-			"Could not read HashiCups order ID "+plan.ID.Value+": "+err.Error(),
+			"Could not read HashiCups order ID "+plan.ID.ValueString()+": "+err.Error(),
 		)
 		return
 	}
@@ -269,17 +269,17 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	for _, item := range order.Items {
 		plan.Items = append(plan.Items, orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64{Value: int64(item.Coffee.ID)},
-				Name:        types.String{Value: item.Coffee.Name},
-				Teaser:      types.String{Value: item.Coffee.Teaser},
-				Description: types.String{Value: item.Coffee.Description},
-				Price:       types.Float64{Value: item.Coffee.Price},
-				Image:       types.String{Value: item.Coffee.Image},
+				ID:          types.Int64Value(int64(item.Coffee.ID)),
+				Name:        types.StringValue(item.Coffee.Name),
+				Teaser:      types.StringValue(item.Coffee.Teaser),
+				Description: types.StringValue(item.Coffee.Description),
+				Price:       types.Float64Value(item.Coffee.Price),
+				Image:       types.StringValue(item.Coffee.Image),
 			},
-			Quantity: types.Int64{Value: int64(item.Quantity)},
+			Quantity: types.Int64Value(int64(item.Quantity)),
 		})
 	}
-	plan.LastUpdated = types.String{Value: string(time.Now().Format(time.RFC850))}
+	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
