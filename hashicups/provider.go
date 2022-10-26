@@ -115,15 +115,15 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	password := os.Getenv("HASHICUPS_PASSWORD")
 
 	if !config.Host.IsNull() {
-		host = config.Host.Value
+		host = config.Host.ValueString()
 	}
 
 	if !config.Username.IsNull() {
-		username = config.Username.Value
+		username = config.Username.ValueString()
 	}
 
 	if !config.Password.IsNull() {
-		password = config.Password.Value
+		password = config.Password.ValueString()
 	}
 
 	// If any of the expected configurations are missing, return
