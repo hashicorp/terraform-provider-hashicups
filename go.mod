@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/hashicorp-demoapp/hashicups-client-go v0.0.0-20210721190446-1df90c457bd4
 	github.com/hashicorp/terraform-plugin-docs v0.13.0
-	github.com/hashicorp/terraform-plugin-framework v0.13.0
+	github.com/hashicorp/terraform-plugin-framework v0.15.0
 	github.com/hashicorp/terraform-plugin-go v0.14.0
 	github.com/hashicorp/terraform-plugin-log v0.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.23.0

@@ -139,24 +139,24 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	// Map response body to model
 	for _, coffee := range coffees {
 		coffeeState := coffeesModel{
-			ID:          types.Int64{Value: int64(coffee.ID)},
-			Name:        types.String{Value: coffee.Name},
-			Teaser:      types.String{Value: coffee.Teaser},
-			Description: types.String{Value: coffee.Description},
-			Price:       types.Float64{Value: coffee.Price},
-			Image:       types.String{Value: coffee.Image},
+			ID:          types.Int64Value(int64(coffee.ID)),
+			Name:        types.StringValue(coffee.Name),
+			Teaser:      types.StringValue(coffee.Teaser),
+			Description: types.StringValue(coffee.Description),
+			Price:       types.Float64Value(coffee.Price),
+			Image:       types.StringValue(coffee.Image),
 		}
 
 		for _, ingredient := range coffee.Ingredient {
 			coffeeState.Ingredients = append(coffeeState.Ingredients, coffeesIngredientsModel{
-				ID: types.Int64{Value: int64(ingredient.ID)},
+				ID: types.Int64Value(int64(ingredient.ID)),
 			})
 		}
 
 		state.Coffees = append(state.Coffees, coffeeState)
 	}
 
-	state.ID = types.String{Value: "placeholder"}
+	state.ID = types.StringValue("placeholder")
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
