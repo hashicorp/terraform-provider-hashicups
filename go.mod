@@ -2,7 +2,7 @@ module terraform-provider-hashicups-pf
 
 go 1.18
 
-require github.com/hashicorp/terraform-plugin-framework v0.13.0
+require github.com/hashicorp/terraform-plugin-framework v0.15.0
 
 require (
 	github.com/fatih/color v1.13.0 // indirect
