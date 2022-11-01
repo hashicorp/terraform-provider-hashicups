@@ -62,7 +62,6 @@ func (r *orderResource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnos
 						Required: true,
 					},
 					"coffee": {
-						// Required: true,
 						Optional: true,
 						// Computed triggers the weird behaviour of nested attributes
 						Computed: true,
@@ -82,7 +81,6 @@ func (r *orderResource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnos
 							"description": {
 								Type:     types.StringType,
 								Computed: true,
-								// Optional: true,
 							},
 							"price": {
 								Type:     types.Float64Type,
