@@ -5,8 +5,7 @@ import (
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -53,65 +52,61 @@ func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataR
 	resp.TypeName = req.ProviderTypeName + "_coffees"
 }
 
-// GetSchema defines the schema for the data source.
-func (d *coffeesDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+// Schema defines the schema for the data source.
+func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		Description: "Fetches the list of coffees.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				Description: "Placeholder identifier attribute.",
 				Computed:    true,
-				Type:        types.StringType,
 			},
-			"coffees": {
+			"coffees": schema.ListNestedAttribute{
 				Description: "List of coffees.",
 				Computed:    true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
-						Description: "Numeric identifier of the coffee.",
-						Type:        types.Int64Type,
-						Computed:    true,
-					},
-					"name": {
-						Description: "Product name of the coffee.",
-						Type:        types.StringType,
-						Computed:    true,
-					},
-					"teaser": {
-						Description: "Fun tagline for the coffee.",
-						Type:        types.StringType,
-						Computed:    true,
-					},
-					"description": {
-						Description: "Product description of the coffee.",
-						Type:        types.StringType,
-						Computed:    true,
-					},
-					"price": {
-						Description: "Suggested cost of the coffee.",
-						Type:        types.Float64Type,
-						Computed:    true,
-					},
-					"image": {
-						Description: "URI for an image of the coffee.",
-						Type:        types.StringType,
-						Computed:    true,
-					},
-					"ingredients": {
-						Description: "List of ingredients in the coffee.",
-						Computed:    true,
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"id": {
-								Description: "Numeric identifier of the coffee ingredient.",
-								Type:        types.Int64Type,
-								Computed:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id": schema.Int64Attribute{
+							Description: "Numeric identifier of the coffee.",
+							Computed:    true,
+						},
+						"name": schema.StringAttribute{
+							Description: "Product name of the coffee.",
+							Computed:    true,
+						},
+						"teaser": schema.StringAttribute{
+							Description: "Fun tagline for the coffee.",
+							Computed:    true,
+						},
+						"description": schema.StringAttribute{
+							Description: "Product description of the coffee.",
+							Computed:    true,
+						},
+						"price": schema.Float64Attribute{
+							Description: "Suggested cost of the coffee.",
+							Computed:    true,
+						},
+						"image": schema.StringAttribute{
+							Description: "URI for an image of the coffee.",
+							Computed:    true,
+						},
+						"ingredients": schema.ListNestedAttribute{
+							Description: "List of ingredients in the coffee.",
+							Computed:    true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"id": schema.Int64Attribute{
+										Description: "Numeric identifier of the coffee ingredient.",
+										Computed:    true,
+									},
+								},
 							},
-						}),
+						},
 					},
-				}),
+				},
 			},
 		},
-	}, nil
+	}
 }
 
 // Configure adds the provider configured client to the data source.
