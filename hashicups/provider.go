@@ -4,10 +4,9 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
 // Ensure the implementation satisfies the expected interfaces
@@ -28,9 +27,9 @@ func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataReque
 	resp.TypeName = "hashicups"
 }
 
-// GetSchema defines the provider-level schema for configuration data.
-func (p *hashicupsProvider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{}, nil
+// Schema defines the provider-level schema for configuration data.
+func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{}
 }
 
 // Configure prepares a HashiCups API client for data sources and resources.
