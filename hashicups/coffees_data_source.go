@@ -5,8 +5,7 @@ import (
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -53,54 +52,50 @@ func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataR
 	resp.TypeName = req.ProviderTypeName + "_coffees"
 }
 
-// GetSchema defines the schema for the data source.
-func (d *coffeesDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
+// Schema defines the schema for the data source.
+func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				Computed: true,
-				Type:     types.StringType,
 			},
-			"coffees": {
+			"coffees": schema.ListNestedAttribute{
 				Computed: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
-						Type:     types.Int64Type,
-						Computed: true,
-					},
-					"name": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-					"teaser": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-					"description": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-					"price": {
-						Type:     types.Float64Type,
-						Computed: true,
-					},
-					"image": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-					"ingredients": {
-						Computed: true,
-						Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-							"id": {
-								Type:     types.Int64Type,
-								Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id": schema.Int64Attribute{
+							Computed: true,
+						},
+						"name": schema.StringAttribute{
+							Computed: true,
+						},
+						"teaser": schema.StringAttribute{
+							Computed: true,
+						},
+						"description": schema.StringAttribute{
+							Computed: true,
+						},
+						"price": schema.Float64Attribute{
+							Computed: true,
+						},
+						"image": schema.StringAttribute{
+							Computed: true,
+						},
+						"ingredients": schema.ListNestedAttribute{
+							Computed: true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"id": schema.Int64Attribute{
+										Computed: true,
+									},
+								},
 							},
-						}),
+						},
 					},
-				}),
+				},
 			},
 		},
-	}, nil
+	}
 }
 
 // Configure adds the provider configured client to the data source.
