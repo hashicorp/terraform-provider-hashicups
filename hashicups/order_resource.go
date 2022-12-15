@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -58,61 +59,54 @@ func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest
 	resp.TypeName = req.ProviderTypeName + "_order"
 }
 
-// GetSchema defines the schema for the data source.
-func (r *orderResource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:     types.StringType,
+// Schema defines the schema for the resource.
+func (r *orderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				Computed: true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"last_updated": {
-				Type:     types.StringType,
+			"last_updated": schema.StringAttribute{
 				Computed: true,
 			},
-			"items": {
+			"items": schema.ListNestedAttribute{
 				Required: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"quantity": {
-						Type:     types.Int64Type,
-						Required: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"quantity": schema.Int64Attribute{
+							Required: true,
+						},
+						"coffee": schema.SingleNestedAttribute{
+							Required: true,
+							Attributes: map[string]schema.Attribute{
+								"id": schema.Int64Attribute{
+									Required: true,
+								},
+								"name": schema.StringAttribute{
+									Computed: true,
+								},
+								"teaser": schema.StringAttribute{
+									Computed: true,
+								},
+								"description": schema.StringAttribute{
+									Computed: true,
+								},
+								"price": schema.Float64Attribute{
+									Computed: true,
+								},
+								"image": schema.StringAttribute{
+									Computed: true,
+								},
+							},
+						},
 					},
-					"coffee": {
-						Required: true,
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"id": {
-								Type:     types.Int64Type,
-								Required: true,
-							},
-							"name": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"teaser": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"description": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"price": {
-								Type:     types.Float64Type,
-								Computed: true,
-							},
-							"image": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-						}),
-					},
-				}),
+				},
 			},
 		},
-	}, nil
+	}
 }
 
 // Configure adds the provider configured client to the data source.
@@ -156,7 +150,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.String{Value: strconv.Itoa(order.ID)}
+	plan.ID = types.StringValue(strconv.Itoa(order.ID))
 	for itemIndex, item := range order.Items {
 		plan.Items[itemIndex] = orderItemModel{
 			Coffee: orderItemCoffeeModel{

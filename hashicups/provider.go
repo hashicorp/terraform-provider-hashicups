@@ -6,11 +6,10 @@ import (
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -40,25 +39,22 @@ func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataReque
 	resp.TypeName = "hashicups"
 }
 
-// GetSchema defines the provider-level schema for configuration data.
-func (p *hashicupsProvider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"host": {
-				Type:     types.StringType,
+// Schema defines the provider-level schema for configuration data.
+func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"host": schema.StringAttribute{
 				Optional: true,
 			},
-			"username": {
-				Type:     types.StringType,
+			"username": schema.StringAttribute{
 				Optional: true,
 			},
-			"password": {
-				Type:      types.StringType,
+			"password": schema.StringAttribute{
 				Optional:  true,
 				Sensitive: true,
 			},
 		},
-	}, nil
+	}
 }
 
 // Configure prepares a HashiCups API client for data sources and resources.
