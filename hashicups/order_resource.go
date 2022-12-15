@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -58,73 +59,66 @@ func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest
 	resp.TypeName = req.ProviderTypeName + "_order"
 }
 
-// GetSchema defines the schema for the data source.
-func (r *orderResource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+// Schema defines the schema for the resource.
+func (r *orderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		Description: "Manages an order.",
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				Description: "Numeric identifier of the order.",
-				Type:        types.StringType,
 				Computed:    true,
-				PlanModifiers: []tfsdk.AttributePlanModifier{
-					resource.UseStateForUnknown(),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"last_updated": {
+			"last_updated": schema.StringAttribute{
 				Description: "Timestamp of the last Terraform update of the order.",
-				Type:        types.StringType,
 				Computed:    true,
 			},
-			"items": {
+			"items": schema.ListNestedAttribute{
 				Description: "List of items in the order.",
 				Required:    true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"quantity": {
-						Description: "Count of this item in the order.",
-						Type:        types.Int64Type,
-						Required:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"quantity": schema.Int64Attribute{
+							Description: "Count of this item in the order.",
+							Required:    true,
+						},
+						"coffee": schema.SingleNestedAttribute{
+							Description: "Coffee item in the order.",
+							Required:    true,
+							Attributes: map[string]schema.Attribute{
+								"id": schema.Int64Attribute{
+									Description: "Numeric identifier of the coffee.",
+									Required:    true,
+								},
+								"name": schema.StringAttribute{
+									Description: "Product name of the coffee.",
+									Computed:    true,
+								},
+								"teaser": schema.StringAttribute{
+									Description: "Fun tagline for the coffee.",
+									Computed:    true,
+								},
+								"description": schema.StringAttribute{
+									Description: "Product description of the coffee.",
+									Computed:    true,
+								},
+								"price": schema.Float64Attribute{
+									Description: "Suggested cost of the coffee.",
+									Computed:    true,
+								},
+								"image": schema.StringAttribute{
+									Description: "URI for an image of the coffee.",
+									Computed:    true,
+								},
+							},
+						},
 					},
-					"coffee": {
-						Description: "Coffee item in the order.",
-						Required:    true,
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"id": {
-								Description: "Numeric identifier of the coffee.",
-								Type:        types.Int64Type,
-								Required:    true,
-							},
-							"name": {
-								Description: "Product name of the coffee.",
-								Type:        types.StringType,
-								Computed:    true,
-							},
-							"teaser": {
-								Description: "Fun tagline for the coffee.",
-								Type:        types.StringType,
-								Computed:    true,
-							},
-							"description": {
-								Description: "Product description of the coffee.",
-								Type:        types.StringType,
-								Computed:    true,
-							},
-							"price": {
-								Description: "Suggested cost of the coffee.",
-								Type:        types.Float64Type,
-								Computed:    true,
-							},
-							"image": {
-								Description: "URI for an image of the coffee.",
-								Type:        types.StringType,
-								Computed:    true,
-							},
-						}),
-					},
-				}),
+				},
 			},
 		},
-	}, nil
+	}
 }
 
 // Configure adds the provider configured client to the data source.
