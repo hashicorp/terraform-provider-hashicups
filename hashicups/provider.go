@@ -41,7 +41,6 @@ func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataReque
 // Schema defines the provider-level schema for configuration data.
 func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Interact with HashiCups.",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
 				Optional: true,
