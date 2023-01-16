@@ -41,6 +41,42 @@ resource "hashicups_order" "test" {
 					resource.TestCheckResourceAttrSet("hashicups_order.test", "last_updated"),
 				),
 			},
+			// ImportState testing
+			{
+				ResourceName:      "hashicups_order.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// The last_updated attribute does not exist in the HashiCups
+				// API, therefore there is no value for it during import.
+				ImportStateVerifyIgnore: []string{"last_updated"},
+			},
+			// Update and Read testing
+			{
+				Config: providerConfig + `
+resource "hashicups_order" "test" {
+  items = [
+    {
+      coffee = {
+        id = 2
+      }
+      quantity = 2
+    },
+  ]
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// Verify first order item updated
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.quantity", "2"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.id", "2"),
+					// Verify first coffee item has Computed attributes updated.
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.description", ""),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.image", "/vault.png"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.name", "Vaulatte"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.price", "200"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.teaser", "Nothing gives you a safe and secure feeling like a Vaulatte"),
+				),
+			},
+			// Delete testing automatically occurs in TestCase
 		},
 	})
 }

@@ -6,34 +6,13 @@ import (
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
-
-// GetSchema defines the provider-level schema for configuration data.
-func (p *hashicupsProvider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"host": {
-				Type:     types.StringType,
-				Optional: true,
-			},
-			"username": {
-				Type:     types.StringType,
-				Optional: true,
-			},
-			"password": {
-				Type:      types.StringType,
-				Optional:  true,
-				Sensitive: true,
-			},
-		},
-	}, nil
-}
 
 // Ensure the implementation satisfies the expected interfaces
 var (
@@ -48,30 +27,44 @@ func New() provider.Provider {
 // hashicupsProvider is the provider implementation.
 type hashicupsProvider struct{}
 
-// Metadata returns the provider type name.
-func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "hashicups"
-}
-
-// DataSources defines the data sources implemented in the provider.
-func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return nil
-}
-
-// Resources defines the resources implemented in the provider.
-func (p *hashicupsProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
-		NewOrderResource,
-	}
-}
-
+// hashicupsProviderModel maps provider schema data to a Go type.
 type hashicupsProviderModel struct {
 	Host     types.String `tfsdk:"host"`
 	Username types.String `tfsdk:"username"`
 	Password types.String `tfsdk:"password"`
 }
 
+// Metadata returns the provider type name.
+func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "hashicups"
+}
+
+// Schema defines the provider-level schema for configuration data.
+func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Interact with HashiCups.",
+		Attributes: map[string]schema.Attribute{
+			"host": schema.StringAttribute{
+				Description: "URI for HashiCups API. May also be provided via HASHICUPS_HOST environment variable.",
+				Optional:    true,
+			},
+			"username": schema.StringAttribute{
+				Description: "Username for HashiCups API. May also be provided via HASHICUPS_USERNAME environment variable.",
+				Optional:    true,
+			},
+			"password": schema.StringAttribute{
+				Description: "Password for HashiCups API. May also be provided via HASHICUPS_PASSWORD environment variable.",
+				Optional:    true,
+				Sensitive:   true,
+			},
+		},
+	}
+}
+
+// Configure prepares a HashiCups API client for data sources and resources.
 func (p *hashicupsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	tflog.Info(ctx, "Configuring HashiCups client")
+
 	// Retrieve provider data from configuration
 	var config hashicupsProviderModel
 	diags := req.Config.Get(ctx, &config)
@@ -170,6 +163,13 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
+	ctx = tflog.SetField(ctx, "hashicups_host", host)
+	ctx = tflog.SetField(ctx, "hashicups_username", username)
+	ctx = tflog.SetField(ctx, "hashicups_password", password)
+	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "hashicups_password")
+
+	tflog.Debug(ctx, "Creating HashiCups client")
+
 	// Create a new HashiCups client using the configuration values
 	client, err := hashicups.NewClient(&host, &username, &password)
 	if err != nil {
@@ -186,4 +186,20 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
+
+	tflog.Info(ctx, "Configured HashiCups client", map[string]any{"success": true})
+}
+
+// DataSources defines the data sources implemented in the provider.
+func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		NewCoffeesDataSource,
+	}
+}
+
+// Resources defines the resources implemented in the provider.
+func (p *hashicupsProvider) Resources(_ context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		NewOrderResource,
+	}
 }

@@ -6,21 +6,19 @@ import (
 	"time"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// orderResource is the resource implementation.
-type orderResource struct {
-	client *hashicups.Client
-}
-
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource = &orderResource{}
+	_ resource.Resource                = &orderResource{}
+	_ resource.ResourceWithConfigure   = &orderResource{}
+	_ resource.ResourceWithImportState = &orderResource{}
 )
 
 // NewOrderResource is a helper function to simplify the provider implementation.
@@ -28,74 +26,9 @@ func NewOrderResource() resource.Resource {
 	return &orderResource{}
 }
 
-// Metadata returns the resource type name.
-func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_order"
-}
-
-// Configure adds the provider configured client to the resource.
-func (r *orderResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*hashicups.Client)
-}
-
-// GetSchema defines the schema for the resource.
-func (r *orderResource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"id": {
-				Type:     types.StringType,
-				Computed: true,
-			},
-			"last_updated": {
-				Type:     types.StringType,
-				Computed: true,
-			},
-			"items": {
-				Required: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"quantity": {
-						Type:     types.Int64Type,
-						Required: true,
-					},
-					"coffee": {
-						Optional: true,
-						// Computed triggers the weird behaviour of nested attributes
-						Computed: true,
-						Attributes: tfsdk.SingleNestedAttributes(map[string]tfsdk.Attribute{
-							"id": {
-								Type:     types.Int64Type,
-								Required: true,
-							},
-							"name": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"teaser": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"description": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-							"price": {
-								Type:     types.Float64Type,
-								Computed: true,
-							},
-							"image": {
-								Type:     types.StringType,
-								Computed: true,
-							},
-						}),
-					},
-				}),
-			},
-		},
-	}, nil
+// orderResource is the resource implementation.
+type orderResource struct {
+	client *hashicups.Client
 }
 
 // orderResourceModel maps the resource schema data.
@@ -121,7 +54,83 @@ type orderItemCoffeeModel struct {
 	Image       types.String  `tfsdk:"image"`
 }
 
-// Create a new resource
+// Metadata returns the data source type name.
+func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_order"
+}
+
+// Schema defines the schema for the data source.
+func (r *orderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Manages an order.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "Numeric identifier of the order.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"last_updated": schema.StringAttribute{
+				Description: "Timestamp of the last Terraform update of the order.",
+				Computed:    true,
+			},
+			"items": schema.ListNestedAttribute{
+				Description: "List of items in the order.",
+				Required:    true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"quantity": schema.Int64Attribute{
+							Description: "Count of this item in the order.",
+							Required:    true,
+						},
+						"coffee": schema.SingleNestedAttribute{
+							Description: "Coffee item in the order.",
+							Required:    true,
+							Attributes: map[string]schema.Attribute{
+								"id": schema.Int64Attribute{
+									Description: "Numeric identifier of the coffee.",
+									Required:    true,
+								},
+								"name": schema.StringAttribute{
+									Description: "Product name of the coffee.",
+									Computed:    true,
+								},
+								"teaser": schema.StringAttribute{
+									Description: "Fun tagline for the coffee.",
+									Computed:    true,
+								},
+								"description": schema.StringAttribute{
+									Description: "Product description of the coffee.",
+									Computed:    true,
+								},
+								"price": schema.Float64Attribute{
+									Description: "Suggested cost of the coffee.",
+									Computed:    true,
+								},
+								"image": schema.StringAttribute{
+									Description: "URI for an image of the coffee.",
+									Computed:    true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// Configure adds the provider configured client to the data source.
+func (r *orderResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	r.client = req.ProviderData.(*hashicups.Client)
+}
+
+// Create creates the resource and sets the initial Terraform state.
 func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
 	var plan orderResourceModel
@@ -154,17 +163,17 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	// Map response body to schema and populate Computed attribute values
 	plan.ID = types.StringValue(strconv.Itoa(order.ID))
-	for orderItemIndex, orderItem := range order.Items {
-		plan.Items[orderItemIndex] = orderItemModel{
+	for itemIndex, item := range order.Items {
+		plan.Items[itemIndex] = orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64Value(int64(orderItem.Coffee.ID)),
-				Name:        types.StringValue(orderItem.Coffee.Name),
-				Teaser:      types.StringValue(orderItem.Coffee.Teaser),
-				Description: types.StringValue(orderItem.Coffee.Description),
-				Price:       types.Float64Value(orderItem.Coffee.Price),
-				Image:       types.StringValue(orderItem.Coffee.Image),
+				ID:          types.Int64Value(int64(item.Coffee.ID)),
+				Name:        types.StringValue(item.Coffee.Name),
+				Teaser:      types.StringValue(item.Coffee.Teaser),
+				Description: types.StringValue(item.Coffee.Description),
+				Price:       types.Float64Value(item.Coffee.Price),
+				Image:       types.StringValue(item.Coffee.Image),
 			},
-			Quantity: types.Int64Value(int64(orderItem.Quantity)),
+			Quantity: types.Int64Value(int64(item.Quantity)),
 		}
 	}
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
@@ -177,7 +186,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 }
 
-// Read resource information
+// Read refreshes the Terraform state with the latest data.
 func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get current state
 	var state orderResourceModel
@@ -221,6 +230,7 @@ func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 }
 
+// Update updates the resource and sets the updated Terraform state on success.
 func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from plan
 	var plan orderResourceModel
@@ -286,6 +296,7 @@ func (r *orderResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 }
 
+// Delete deletes the resource and removes the Terraform state on success.
 func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	// Retrieve values from state
 	var state orderResourceModel
