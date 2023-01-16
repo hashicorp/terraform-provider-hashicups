@@ -1,33 +1,13 @@
 # Terraform Provider Hashicups
 
-This repo is a companion repo to the [Call APIs with Terraform Providers](https://learn.hashicorp.com/collections/terraform/providers) Learn collection. 
+Demo of the computed nested attribute issue: 
 
-In the collection, you will use the HashiCups provider as a bridge between Terraform and the HashiCups API. Then, extend Terraform by recreating the HashiCups provider. By the end of this collection, you will be able to take these intuitions to create your own custom Terraform provider. 
+`terraform plan` can show unempty plan for unchanged configurations with computed nested attributes that also have computed attributes.
 
-## Build provider
+The repo is a modified version of [Terraform Hashicups example](https://github.com/hashicorp/terraform-provider-hashicups-pf).
 
-Run the following command to build the provider
-
-```shell
-$ go build -o terraform-provider-hashicups
-```
-
-## Test sample configuration
-
-First, build and install the provider.
+## Reproducing the issue
 
 ```shell
-$ make install
-```
-
-Then, navigate to the `examples` directory. 
-
-```shell
-$ cd examples
-```
-
-Run the following command to initialize the workspace and apply the sample configuration.
-
-```shell
-$ terraform init && terraform apply
+make error
 ```
