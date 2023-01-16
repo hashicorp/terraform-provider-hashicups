@@ -87,7 +87,8 @@ func (r *orderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 						"coffee": schema.SingleNestedAttribute{
 							Description: "Coffee item in the order.",
 							Optional:    true,
-							Computed:    true,
+							// Computed triggers the error
+							Computed: true,
 							Attributes: map[string]schema.Attribute{
 								"id": schema.Int64Attribute{
 									Description: "Numeric identifier of the coffee.",
