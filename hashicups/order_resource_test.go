@@ -32,10 +32,10 @@ resource "hashicups_order" "test" {
 					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.id", "1"),
 					// Verify first coffee item has Computed attributes filled.
 					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.description", ""),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.image", "/packer.png"),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.name", "Packer Spiced Latte"),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.price", "350"),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.teaser", "Packed with goodness to spice up your images"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.image", "/hashicorp.png"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.name", "HCP Aeropress"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.price", "200"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.teaser", "Automation in a cup"),
 					// Verify dynamic values have any value set in the state.
 					resource.TestCheckResourceAttrSet("hashicups_order.test", "id"),
 					resource.TestCheckResourceAttrSet("hashicups_order.test", "last_updated"),
@@ -70,10 +70,10 @@ resource "hashicups_order" "test" {
 					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.id", "2"),
 					// Verify first coffee item has Computed attributes updated.
 					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.description", ""),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.image", "/vault.png"),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.name", "Vaulatte"),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.price", "200"),
-					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.teaser", "Nothing gives you a safe and secure feeling like a Vaulatte"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.image", "/packer.png"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.name", "Packer Spiced Latte"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.price", "350"),
+					resource.TestCheckResourceAttr("hashicups_order.test", "items.0.coffee.teaser", "Packed with goodness to spice up your images"),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
