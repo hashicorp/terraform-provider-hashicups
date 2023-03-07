@@ -3,7 +3,7 @@ package hashicups
 import (
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccCoffeesDataSource(t *testing.T) {
@@ -15,18 +15,16 @@ func TestAccCoffeesDataSource(t *testing.T) {
 				Config: providerConfig + `data "hashicups_coffees" "test" {}`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// Verify number of coffees returned
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.#", "6"),
+					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.#", "9"),
 					// Verify the first coffee to ensure all attributes are set
 					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.description", ""),
 					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.id", "1"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.image", "/packer.png"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.ingredients.#", "3"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.ingredients.0.id", "1"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.ingredients.1.id", "2"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.ingredients.2.id", "4"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.name", "Packer Spiced Latte"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.price", "350"),
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.teaser", "Packed with goodness to spice up your images"),
+					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.image", "/hashicorp.png"),
+					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.ingredients.#", "1"),
+					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.ingredients.0.id", "6"),
+					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.name", "HCP Aeropress"),
+					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.price", "200"),
+					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.teaser", "Automation in a cup"),
 					// Verify placeholder id attribute
 					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "id", "placeholder"),
 				),
