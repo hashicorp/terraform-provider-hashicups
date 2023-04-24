@@ -1,7 +1,8 @@
-package hashicups
+package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -41,7 +42,7 @@ type coffeesModel struct {
 	Ingredients []coffeesIngredientsModel `tfsdk:"ingredients"`
 }
 
-// coffeesIngredientsModel maps coffee ingredients data
+// coffeesIngredientsModel maps coffee ingredients data.
 type coffeesIngredientsModel struct {
 	ID types.Int64 `tfsdk:"id"`
 }
@@ -95,12 +96,22 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 }
 
 // Configure adds the provider configured client to the data source.
-func (d *coffeesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+func (d *coffeesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
 
-	d.client = req.ProviderData.(*hashicups.Client)
+	client, ok := req.ProviderData.(*hashicups.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *hashicups.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
 }
 
 // Read refreshes the Terraform state with the latest data.
