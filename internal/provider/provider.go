@@ -1,4 +1,4 @@
-package hashicups
+package provider
 
 import (
 	"context"
@@ -14,18 +14,27 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// Ensure the implementation satisfies the expected interfaces
+// Ensure the implementation satisfies the expected interfaces.
 var (
 	_ provider.Provider = &hashicupsProvider{}
 )
 
 // New is a helper function to simplify provider server and testing implementation.
-func New() provider.Provider {
-	return &hashicupsProvider{}
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &hashicupsProvider{
+			version: version,
+		}
+	}
 }
 
 // hashicupsProvider is the provider implementation.
-type hashicupsProvider struct{}
+type hashicupsProvider struct {
+	// version is set to the provider version on release, "dev" when the
+	// provider is built and ran locally, and "test" when running acceptance
+	// testing.
+	version string
+}
 
 // hashicupsProviderModel maps provider schema data to a Go type.
 type hashicupsProviderModel struct {
@@ -37,6 +46,7 @@ type hashicupsProviderModel struct {
 // Metadata returns the provider type name.
 func (p *hashicupsProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "hashicups"
+	resp.Version = p.version
 }
 
 // Schema defines the provider-level schema for configuration data.
@@ -57,7 +67,6 @@ func (p *hashicupsProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 	}
 }
 
-// Configure prepares a HashiCups API client for data sources and resources.
 func (p *hashicupsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	tflog.Info(ctx, "Configuring HashiCups client")
 
