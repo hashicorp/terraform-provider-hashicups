@@ -1,7 +1,8 @@
-package hashicups
+package provider
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -50,7 +51,7 @@ type orderItemCoffeeModel struct {
 	Image       types.String  `tfsdk:"image"`
 }
 
-// Metadata returns the data source type name.
+// Metadata returns the resource type name.
 func (r *orderResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_order"
 }
@@ -102,16 +103,27 @@ func (r *orderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	}
 }
 
-// Configure adds the provider configured client to the data source.
-func (r *orderResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+// Configure adds the provider configured client to the resource.
+func (r *orderResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
 
-	r.client = req.ProviderData.(*hashicups.Client)
+	client, ok := req.ProviderData.(*hashicups.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *hashicups.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
 }
 
-// Create creates the resource and sets the initial Terraform state.
+// Create a new resource.
 func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
 	var plan orderResourceModel
@@ -144,17 +156,17 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	// Map response body to schema and populate Computed attribute values
 	plan.ID = types.StringValue(strconv.Itoa(order.ID))
-	for itemIndex, item := range order.Items {
-		plan.Items[itemIndex] = orderItemModel{
+	for orderItemIndex, orderItem := range order.Items {
+		plan.Items[orderItemIndex] = orderItemModel{
 			Coffee: orderItemCoffeeModel{
-				ID:          types.Int64Value(int64(item.Coffee.ID)),
-				Name:        types.StringValue(item.Coffee.Name),
-				Teaser:      types.StringValue(item.Coffee.Teaser),
-				Description: types.StringValue(item.Coffee.Description),
-				Price:       types.Float64Value(item.Coffee.Price),
-				Image:       types.StringValue(item.Coffee.Image),
+				ID:          types.Int64Value(int64(orderItem.Coffee.ID)),
+				Name:        types.StringValue(orderItem.Coffee.Name),
+				Teaser:      types.StringValue(orderItem.Coffee.Teaser),
+				Description: types.StringValue(orderItem.Coffee.Description),
+				Price:       types.Float64Value(orderItem.Coffee.Price),
+				Image:       types.StringValue(orderItem.Coffee.Image),
 			},
-			Quantity: types.Int64Value(int64(item.Quantity)),
+			Quantity: types.Int64Value(int64(orderItem.Quantity)),
 		}
 	}
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
@@ -167,7 +179,7 @@ func (r *orderResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 }
 
-// Read refreshes the Terraform state with the latest data.
+// Read resource information.
 func (r *orderResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get current state
 	var state orderResourceModel
