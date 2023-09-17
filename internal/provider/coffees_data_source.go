@@ -28,19 +28,16 @@ type coffeesDataSource struct {
 
 // coffeesDataSourceModel maps the data source schema data.
 type coffeesDataSourceModel struct {
-	Coffees []coffeesModel `tfsdk:"coffees"`
+	// Coffee coffeeModel `tfsdk:"coffees"`
+	// AgentsIpv4               types.List `tfsdk:"agents_ipv4"`
+	Arns types.List            `tfsdk:"arns"`
 }
 
+// types.List
 // coffeesModel maps coffees schema data.
-type coffeesModel struct {
-	ID          types.Int64               `tfsdk:"id"`
-	Name        types.String              `tfsdk:"name"`
-	Teaser      types.String              `tfsdk:"teaser"`
-	Description types.String              `tfsdk:"description"`
-	Price       types.Float64             `tfsdk:"price"`
-	Image       types.String              `tfsdk:"image"`
-	Ingredients []coffeesIngredientsModel `tfsdk:"ingredients"`
-}
+// type coffeeModel struct {
+// 	Arns []types.String            `tfsdk:"arns"`
+// }
 
 // coffeesIngredientsModel maps coffee ingredients data.
 type coffeesIngredientsModel struct {
@@ -55,41 +52,12 @@ func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataR
 // Schema defines the schema for the data source.
 func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Use this data source to retrieve public subnet ARNs.",
 		Attributes: map[string]schema.Attribute{
-			"coffees": schema.ListNestedAttribute{
+			"arns": schema.ListAttribute{
+				Description: "An Array of public subnet ARNs.",
+				ElementType: types.StringType,
 				Computed: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.Int64Attribute{
-							Computed: true,
-						},
-						"name": schema.StringAttribute{
-							Computed: true,
-						},
-						"teaser": schema.StringAttribute{
-							Computed: true,
-						},
-						"description": schema.StringAttribute{
-							Computed: true,
-						},
-						"price": schema.Float64Attribute{
-							Computed: true,
-						},
-						"image": schema.StringAttribute{
-							Computed: true,
-						},
-						"ingredients": schema.ListNestedAttribute{
-							Computed: true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"id": schema.Int64Attribute{
-										Computed: true,
-									},
-								},
-							},
-						},
-					},
-				},
 			},
 		},
 	}
@@ -118,34 +86,11 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state coffeesDataSourceModel
 
-	coffees, err := d.client.GetCoffees()
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to Read HashiCups Coffees",
-			err.Error(),
-		)
-		return
-	}
+	arns := []string{"This", "is", "another", "list"}
 
-	// Map response body to model
-	for _, coffee := range coffees {
-		coffeeState := coffeesModel{
-			ID:          types.Int64Value(int64(coffee.ID)),
-			Name:        types.StringValue(coffee.Name),
-			Teaser:      types.StringValue(coffee.Teaser),
-			Description: types.StringValue(coffee.Description),
-			Price:       types.Float64Value(coffee.Price),
-			Image:       types.StringValue(coffee.Image),
-		}
-
-		for _, ingredient := range coffee.Ingredient {
-			coffeeState.Ingredients = append(coffeeState.Ingredients, coffeesIngredientsModel{
-				ID: types.Int64Value(int64(ingredient.ID)),
-			})
-		}
-
-		state.Coffees = append(state.Coffees, coffeeState)
-	}
+	// TODO: Should we ignore diags here or not?
+	// I think we should, as a response from Aws will contain more info
+	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, arns)
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
