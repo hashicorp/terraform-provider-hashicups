@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	// "strings"
+	"unsafe"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -35,6 +37,7 @@ type coffeesDataSource struct {
 type coffeesDataSourceModel struct {
 	// Coffee coffeeModel `tfsdk:"coffees"`
 	// AgentsIpv4               types.List `tfsdk:"agents_ipv4"`
+	Regions types.List         `tfsdk:"regions"`
 	Arns types.List            `tfsdk:"arns"`
 }
 
@@ -52,6 +55,11 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Description: "An Array of public subnet ARNs.",
 				ElementType: types.StringType,
 				Computed: true,
+			},
+			"regions": schema.ListAttribute{
+				Description: "An Array of regions to look for subnets in.",
+				ElementType: types.StringType,
+				Optional:    true,
 			},
 		},
 	}
@@ -80,6 +88,12 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state coffeesDataSourceModel
 
+	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		resp.Diagnostics.AddError("WTF", "")
+		return
+	}
+
 	// Load AWS session configuration
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
@@ -91,9 +105,10 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	client := ec2.NewFromConfig(cfg)
 
 	var regions []string
-	regions = []string{"us-east-1", "us-east-2"}
+	var shit *string
 
-	if len(regions) == 0 {
+	if state.Regions.IsNull() {
+	// if true {
 		// Get a list of all AWS regions
 		describeRegionsResp, err := client.DescribeRegions(context.TODO(), &ec2.DescribeRegionsInput{})
 
@@ -104,13 +119,46 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		for _, region := range describeRegionsResp.Regions {
 		    regions = append(regions, *region.RegionName)
 		}
+	} else {
+		// regions = []string{"us-east-1", "us-east-2"}
+
+		for _, element := range state.Regions.Elements() {
+			val, _ := element.ToTerraformValue(ctx)
+			foo := "hey"
+			shit = &foo
+			// resp.Diagnostics.AddError("Shit before is, "+ *shit, "")
+			err = val.As(shit)
+			if err != nil {
+				resp.Diagnostics.AddError("Hmm, "+ err.Error(), "")
+				return
+			}
+			// resp.Diagnostics.AddError("Shit after is, "+ *shit, "")
+			// return
+
+			// v, _ := val.value.(string)
+
+		    // regions = append(regions, value.String())
+		    // regions = append(regions, deepCopy(*shit))
+		    regions = append(regions, *shit)
+
+			// err := value.As(&regions)
+			// if err != nil {
+			// 	panic(err)
+			// }
+		    // regions = append(regions, )
+		}
 	}
 
 	// Initialize variables for pagination
 	var nextToken *string
 	var subnetARNs []string
+	// resp.Diagnostics.AddError("regions before is, "+ strings.Join(regions, ","), "")
+	// regions = []string{"us-east-1", "us-east-2"}
+	// regions = []string{"us-west-1", "us-east-1", "us-east-2"}
 
 	// Iterate through regions
+	// heepo := []string{"us-east-1", "us-east-2"}
+	// for _, region := range heepo {
 	for _, region := range regions {
 		// Create a client for the current region
 		regionCfg := cfg.Copy()
@@ -152,6 +200,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	// TODO: Should we ignore diags here or not?
 	// I think we should, as a response from Aws will contain more info if the Arns are messed up
 	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, subnetARNs)
+	state.Regions, _ = types.ListValueFrom(ctx, types.StringType, regions)
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
@@ -159,4 +208,23 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+}
+
+
+func expandStringList(configured []interface{}) []string {
+	vs := make([]string, 0, len(configured))
+	for _, v := range configured {
+		val, ok := v.(string)
+		if ok && val != "" {
+			vs = append(vs, v.(string))
+		}
+	}
+	return vs
+}
+
+
+func deepCopy(s string) string {
+    b := make([]byte, len(s))
+    copy(b, s)
+    return *(*string)(unsafe.Pointer(&b))
 }
