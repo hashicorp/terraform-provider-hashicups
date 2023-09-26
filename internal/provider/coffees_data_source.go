@@ -8,6 +8,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -31,17 +36,6 @@ type coffeesDataSourceModel struct {
 	// Coffee coffeeModel `tfsdk:"coffees"`
 	// AgentsIpv4               types.List `tfsdk:"agents_ipv4"`
 	Arns types.List            `tfsdk:"arns"`
-}
-
-// types.List
-// coffeesModel maps coffees schema data.
-// type coffeeModel struct {
-// 	Arns []types.String            `tfsdk:"arns"`
-// }
-
-// coffeesIngredientsModel maps coffee ingredients data.
-type coffeesIngredientsModel struct {
-	ID types.Int64 `tfsdk:"id"`
 }
 
 // Metadata returns the data source type name.
@@ -86,11 +80,78 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state coffeesDataSourceModel
 
-	arns := []string{"This", "is", "another", "list"}
+	// Load AWS session configuration
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to load AWS SDK config, "+ err.Error(), "")
+		return
+	}
+
+	// Create an EC2 client
+	client := ec2.NewFromConfig(cfg)
+
+	var regions []string
+	regions = []string{"us-east-1", "us-east-2"}
+
+	if len(regions) == 0 {
+		// Get a list of all AWS regions
+		describeRegionsResp, err := client.DescribeRegions(context.TODO(), &ec2.DescribeRegionsInput{})
+
+		if err != nil {
+			resp.Diagnostics.AddError("Error describing regions, " + err.Error(), "")
+			return
+		}
+		for _, region := range describeRegionsResp.Regions {
+		    regions = append(regions, *region.RegionName)
+		}
+	}
+
+	// Initialize variables for pagination
+	var nextToken *string
+	var subnetARNs []string
+
+	// Iterate through regions
+	for _, region := range regions {
+		// Create a client for the current region
+		regionCfg := cfg.Copy()
+		regionCfg.Region = region
+		regionClient := ec2.NewFromConfig(regionCfg)
+
+		// Iterate through pages
+		for {
+			desribeSubnetsResp, err := regionClient.DescribeSubnets(
+				context.TODO(),
+				&ec2.DescribeSubnetsInput{
+					 Filters: []ec2types.Filter{
+				        {
+				            Name:   aws.String("map-public-ip-on-launch"),
+				            Values: []string{"true"},
+				        },
+					},
+					NextToken: nextToken,
+				},
+			)
+			if err != nil {
+				// TODO: WHAT DO THESE 2 ARGS DO?
+				resp.Diagnostics.AddError("Error describing subnets in region, " + err.Error(), "")
+				return
+			}
+			for _, subnet := range desribeSubnetsResp.Subnets {
+				subnetARNs = append(subnetARNs, *subnet.SubnetArn)
+			}
+
+			// Check if there are more pages of subnets to retrieve
+			if desribeSubnetsResp.NextToken == nil {
+				break
+			}
+
+			nextToken = desribeSubnetsResp.NextToken
+		}
+	}
 
 	// TODO: Should we ignore diags here or not?
-	// I think we should, as a response from Aws will contain more info
-	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, arns)
+	// I think we should, as a response from Aws will contain more info if the Arns are messed up
+	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, subnetARNs)
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
