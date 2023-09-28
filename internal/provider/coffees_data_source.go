@@ -90,7 +90,6 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
-		resp.Diagnostics.AddError("WTF", "")
 		return
 	}
 
@@ -105,7 +104,6 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	client := ec2.NewFromConfig(cfg)
 
 	var regions []string
-	// diags := diag.Diagnostics{}
 
 	if state.Regions.IsNull() {
 		// Get a list of all AWS regions
@@ -119,7 +117,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		    regions = append(regions, *region.RegionName)
 		}
 	} else {
-		state.Regions.ElementsAs(ctx, &regions, false)
+		resp.Diagnostics.Append(state.Regions.ElementsAs(ctx, &regions, false)...)
 	}
 
 	// Initialize variables for pagination
@@ -148,7 +146,6 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 				},
 			)
 			if err != nil {
-				// TODO: WHAT DO THESE 2 ARGS DO?
 				resp.Diagnostics.AddError("Error describing subnets in region, " + err.Error(), "")
 				return
 			}
@@ -164,17 +161,16 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			nextToken = desribeSubnetsResp.NextToken
 		}
 	}
+	// Sort lists
 	sort.Strings(subnetARNs)
 	sort.Strings(regions)
 
-	// TODO: Should we ignore diags here or not?
-	// I think we should, as a response from Aws will contain more info if the Arns are messed up
+	// Ignore diags since we would catch error elsewhere
 	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, subnetARNs)
 	state.Regions, _ = types.ListValueFrom(ctx, types.StringType, regions)
 
 	// Set state
-	diags := resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
