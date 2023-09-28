@@ -95,7 +95,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	// Load AWS session configuration
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to load AWS SDK config, "+ err.Error(), "")
 		return
@@ -109,7 +109,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	if state.Regions.IsNull() {
 		// Get a list of all AWS regions
-		describeRegionsResp, err := client.DescribeRegions(context.TODO(), &ec2.DescribeRegionsInput{})
+		describeRegionsResp, err := client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
 
 		if err != nil {
 			resp.Diagnostics.AddError("Error describing regions, " + err.Error(), "")
@@ -136,7 +136,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		// Iterate through pages
 		for {
 			desribeSubnetsResp, err := regionClient.DescribeSubnets(
-				context.TODO(),
+				ctx,
 				&ec2.DescribeSubnetsInput{
 					 Filters: []ec2types.Filter{
 				        {
