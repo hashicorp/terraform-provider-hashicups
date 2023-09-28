@@ -22,8 +22,8 @@ var (
 	_ datasource.DataSourceWithConfigure = &publicSubnetsDataSource{}
 )
 
-// NewCoffeesDataSource is a helper function to simplify the provider implementation.
-func NewCoffeesDataSource() datasource.DataSource {
+// NewPublicSubnetsDataSource is a helper function to simplify the provider implementation.
+func NewPublicSubnetsDataSource() datasource.DataSource {
 	return &publicSubnetsDataSource{}
 }
 
@@ -37,6 +37,11 @@ type publicSubnetsDataSourceModel struct {
 	Arns types.List            `tfsdk:"arns"`
 	Regions types.List         `tfsdk:"regions"`
 }
+
+func (p publicSubnetsDataSourceModel) GetRegions() types.List {
+   return p.Regions
+}
+
 
 // Metadata returns the data source type name.
 func (d *publicSubnetsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -108,6 +113,37 @@ func addToSubnetArns(
 	return resp.NextToken, nil
 }
 
+type DataSourceModelWithRegions interface {
+   GetRegions() types.List
+}
+
+func getRegions(
+	ctx context.Context,
+	cfg aws.Config,
+	state DataSourceModelWithRegions,
+	resp *datasource.ReadResponse,
+) (*[]string, error) {
+	client := ec2.NewFromConfig(cfg)
+
+	var regions []string
+
+	if state.GetRegions().IsNull() {
+		// Get a list of all AWS regions
+		describeRegionsResp, err := client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
+
+		if err != nil {
+			resp.Diagnostics.AddError("Error describing regions, " + err.Error(), "")
+			return nil, err
+		}
+		for _, region := range describeRegionsResp.Regions {
+		    regions = append(regions, *region.RegionName)
+		}
+	} else {
+		resp.Diagnostics.Append(state.GetRegions().ElementsAs(ctx, &regions, false)...)
+	}
+	return &regions, nil
+}
+
 // Read refreshes the Terraform state with the latest data.
 func (d *publicSubnetsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state publicSubnetsDataSourceModel
@@ -124,24 +160,9 @@ func (d *publicSubnetsDataSource) Read(ctx context.Context, req datasource.ReadR
 		return
 	}
 
-	// Create an EC2 client
-	client := ec2.NewFromConfig(cfg)
-
-	var regions []string
-
-	if state.Regions.IsNull() {
-		// Get a list of all AWS regions
-		describeRegionsResp, err := client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
-
-		if err != nil {
-			resp.Diagnostics.AddError("Error describing regions, " + err.Error(), "")
-			return
-		}
-		for _, region := range describeRegionsResp.Regions {
-		    regions = append(regions, *region.RegionName)
-		}
-	} else {
-		resp.Diagnostics.Append(state.Regions.ElementsAs(ctx, &regions, false)...)
+	regions, err := getRegions(ctx, cfg, state, resp)
+	if err != nil {
+		return
 	}
 
 	// Initialize variables for pagination
@@ -149,7 +170,7 @@ func (d *publicSubnetsDataSource) Read(ctx context.Context, req datasource.ReadR
 	var subnetARNs []string
 
 	// Iterate through regions
-	for _, region := range regions {
+	for _, region := range *regions {
 		// Create a client for the current region
 		regionCfg := cfg.Copy()
 		regionCfg.Region = region
@@ -177,7 +198,7 @@ func (d *publicSubnetsDataSource) Read(ctx context.Context, req datasource.ReadR
 	}
 	// Sort lists
 	sort.Strings(subnetARNs)
-	sort.Strings(regions)
+	sort.Strings(*regions)
 
 	// Ignore diags since we would catch error elsewhere
 	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, subnetARNs)
