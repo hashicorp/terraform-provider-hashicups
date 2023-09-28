@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	// "strings"
+	"sort"
 	"unsafe"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
@@ -39,7 +40,7 @@ type coffeesDataSourceModel struct {
 	// Coffee coffeeModel `tfsdk:"coffees"`
 	// AgentsIpv4               types.List `tfsdk:"agents_ipv4"`
 	Arns types.List            `tfsdk:"arns"`
-	Regions types.Set         `tfsdk:"regions"`
+	Regions types.List         `tfsdk:"regions"`
 }
 
 // Metadata returns the data source type name.
@@ -57,7 +58,7 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				ElementType: types.StringType,
 				Computed: true,
 			},
-			"regions": schema.SetAttribute{
+			"regions": schema.ListAttribute{
 				Description: "An Array of regions to look for subnets in.",
 				ElementType: types.StringType,
 				Optional:    true,
@@ -212,11 +213,13 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			nextToken = desribeSubnetsResp.NextToken
 		}
 	}
+	sort.Strings(subnetARNs)
+	sort.Strings(regions)
 
 	// TODO: Should we ignore diags here or not?
 	// I think we should, as a response from Aws will contain more info if the Arns are messed up
 	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, subnetARNs)
-	state.Regions, _ = types.SetValueFrom(ctx, types.StringType, regions)
+	state.Regions, _ = types.ListValueFrom(ctx, types.StringType, regions)
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
