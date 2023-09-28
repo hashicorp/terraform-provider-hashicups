@@ -13,7 +13,7 @@ provider "public" {
 }
 
 data "public_subnets" "subnets" {
-  regions = ["us-west-1",  "us-east-1", "us-east-2", "us-west-2"]
+  regions = ["us-west-1",  "us-east-1"]
 }
 
 output "public_subnets" {
@@ -26,4 +26,13 @@ data "public_ec2s" "ec2s" {
 
 output "public_ec2s" {
   value = data.public_ec2s.ec2s
+}
+
+
+data "public_elbs" "elbs" {
+  regions = ["us-west-1",  "us-east-1", "us-east-2", "us-west-2"]
+}
+
+output "public_elbs" {
+  value = data.public_elbs.elbs
 }

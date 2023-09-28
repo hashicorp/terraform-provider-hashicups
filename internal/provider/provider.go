@@ -187,6 +187,7 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 func (p *hashicupsProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewPublicEC2sDataSource,
+		NewPublicELBsDataSource,
 		NewPublicSubnetsDataSource,
 	}
 }

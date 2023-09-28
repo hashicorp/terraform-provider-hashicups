@@ -130,10 +130,10 @@ func addToEC2Arns(
                 continue
             }
             ec2ARN = fmt.Sprintf(
-            "arn:aws:ec2:%s:%s:instance/%s",
-            region,
-            accountID,
-             *instance.InstanceId,
+	            "arn:aws:ec2:%s:%s:instance/%s",
+	            region,
+	            accountID,
+	             *instance.InstanceId,
             )
             *ec2ARNs = append(*ec2ARNs, ec2ARN)
         }
