@@ -3,9 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	// "strings"
 	"sort"
-	"unsafe"
 
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -107,15 +105,9 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	client := ec2.NewFromConfig(cfg)
 
 	var regions []string
-	// var shit *string
-
-	// Trying out
-	// hostFilters := make([]string, 0)
-	var hostFilters []string
 	// diags := diag.Diagnostics{}
 
 	if state.Regions.IsNull() {
-	// if true {
 		// Get a list of all AWS regions
 		describeRegionsResp, err := client.DescribeRegions(context.TODO(), &ec2.DescribeRegionsInput{})
 
@@ -127,55 +119,14 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		    regions = append(regions, *region.RegionName)
 		}
 	} else {
-		// regions = []string{"us-east-1", "us-east-2"}
-		// state.Regions.ElementsAs(ctx, hostFilters, false)
-		state.Regions.ElementsAs(ctx, &hostFilters, false)
-		// diags.Append(state.Regions.ElementsAs(ctx, &hostFilters, false)...)
-		// resp.Diagnostics.AddError(diags)
-		// return
-
-		// for _, element := range state.Regions.Elements() {
-		// 	val, _ := element.ToTerraformValue(ctx)
-		// 	foo := "hey"
-		// 	shit = &foo
-		// 	// resp.Diagnostics.AddError("Shit before is, "+ *shit, "")
-		// 	err = val.As(shit)
-		// 	if err != nil {
-		// 		resp.Diagnostics.AddError("Hmm, "+ err.Error(), "")
-		// 		return
-		// 	}
-		// 	// resp.Diagnostics.AddError("Shit after is, "+ *shit, "")
-		// 	// return
-
-		// 	// v, _ := val.value.(string)
-
-		//     // regions = append(regions, value.String())
-		//     // regions = append(regions, deepCopy(*shit))
-		//     regions = append(regions, *shit)
-
-		// 	// err := value.As(&regions)
-		// 	// if err != nil {
-		// 	// 	panic(err)
-		// 	// }
-		//     // regions = append(regions, )
-		// }
+		state.Regions.ElementsAs(ctx, &regions, false)
 	}
-
-	// resp.Diagnostics.AddError("Shit hostFilters is, "+ hostFilters, "")
-	// resp.Diagnostics.AddError("hostFilters is, "+ strings.Join(hostFilters, ","), "")
-	// return
-
-	regions = hostFilters
 
 	// Initialize variables for pagination
 	var nextToken *string
 	var subnetARNs []string
-	// regions = []string{"us-east-1", "us-east-2"}
-	// regions = []string{"us-west-1", "us-east-1", "us-east-2"}
 
 	// Iterate through regions
-	// heepo := []string{"us-east-1", "us-east-2"}
-	// for _, region := range heepo {
 	for _, region := range regions {
 		// Create a client for the current region
 		regionCfg := cfg.Copy()
@@ -227,23 +178,4 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-}
-
-
-func expandStringList(configured []interface{}) []string {
-	vs := make([]string, 0, len(configured))
-	for _, v := range configured {
-		val, ok := v.(string)
-		if ok && val != "" {
-			vs = append(vs, v.(string))
-		}
-	}
-	return vs
-}
-
-
-func deepCopy(s string) string {
-    b := make([]byte, len(s))
-    copy(b, s)
-    return *(*string)(unsafe.Pointer(&b))
 }
