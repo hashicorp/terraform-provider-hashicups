@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	// "github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -37,8 +38,8 @@ type coffeesDataSource struct {
 type coffeesDataSourceModel struct {
 	// Coffee coffeeModel `tfsdk:"coffees"`
 	// AgentsIpv4               types.List `tfsdk:"agents_ipv4"`
-	Regions types.List         `tfsdk:"regions"`
 	Arns types.List            `tfsdk:"arns"`
+	Regions types.Set         `tfsdk:"regions"`
 }
 
 // Metadata returns the data source type name.
@@ -56,7 +57,7 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				ElementType: types.StringType,
 				Computed: true,
 			},
-			"regions": schema.ListAttribute{
+			"regions": schema.SetAttribute{
 				Description: "An Array of regions to look for subnets in.",
 				ElementType: types.StringType,
 				Optional:    true,
@@ -105,7 +106,12 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	client := ec2.NewFromConfig(cfg)
 
 	var regions []string
-	var shit *string
+	// var shit *string
+
+	// Trying out
+	// hostFilters := make([]string, 0)
+	var hostFilters []string
+	// diags := diag.Diagnostics{}
 
 	if state.Regions.IsNull() {
 	// if true {
@@ -121,38 +127,48 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		}
 	} else {
 		// regions = []string{"us-east-1", "us-east-2"}
+		// state.Regions.ElementsAs(ctx, hostFilters, false)
+		state.Regions.ElementsAs(ctx, &hostFilters, false)
+		// diags.Append(state.Regions.ElementsAs(ctx, &hostFilters, false)...)
+		// resp.Diagnostics.AddError(diags)
+		// return
 
-		for _, element := range state.Regions.Elements() {
-			val, _ := element.ToTerraformValue(ctx)
-			foo := "hey"
-			shit = &foo
-			// resp.Diagnostics.AddError("Shit before is, "+ *shit, "")
-			err = val.As(shit)
-			if err != nil {
-				resp.Diagnostics.AddError("Hmm, "+ err.Error(), "")
-				return
-			}
-			// resp.Diagnostics.AddError("Shit after is, "+ *shit, "")
-			// return
+		// for _, element := range state.Regions.Elements() {
+		// 	val, _ := element.ToTerraformValue(ctx)
+		// 	foo := "hey"
+		// 	shit = &foo
+		// 	// resp.Diagnostics.AddError("Shit before is, "+ *shit, "")
+		// 	err = val.As(shit)
+		// 	if err != nil {
+		// 		resp.Diagnostics.AddError("Hmm, "+ err.Error(), "")
+		// 		return
+		// 	}
+		// 	// resp.Diagnostics.AddError("Shit after is, "+ *shit, "")
+		// 	// return
 
-			// v, _ := val.value.(string)
+		// 	// v, _ := val.value.(string)
 
-		    // regions = append(regions, value.String())
-		    // regions = append(regions, deepCopy(*shit))
-		    regions = append(regions, *shit)
+		//     // regions = append(regions, value.String())
+		//     // regions = append(regions, deepCopy(*shit))
+		//     regions = append(regions, *shit)
 
-			// err := value.As(&regions)
-			// if err != nil {
-			// 	panic(err)
-			// }
-		    // regions = append(regions, )
-		}
+		// 	// err := value.As(&regions)
+		// 	// if err != nil {
+		// 	// 	panic(err)
+		// 	// }
+		//     // regions = append(regions, )
+		// }
 	}
+
+	// resp.Diagnostics.AddError("Shit hostFilters is, "+ hostFilters, "")
+	// resp.Diagnostics.AddError("hostFilters is, "+ strings.Join(hostFilters, ","), "")
+	// return
+
+	regions = hostFilters
 
 	// Initialize variables for pagination
 	var nextToken *string
 	var subnetARNs []string
-	// resp.Diagnostics.AddError("regions before is, "+ strings.Join(regions, ","), "")
 	// regions = []string{"us-east-1", "us-east-2"}
 	// regions = []string{"us-west-1", "us-east-1", "us-east-2"}
 
@@ -200,7 +216,7 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	// TODO: Should we ignore diags here or not?
 	// I think we should, as a response from Aws will contain more info if the Arns are messed up
 	state.Arns, _ = types.ListValueFrom(ctx, types.StringType, subnetARNs)
-	state.Regions, _ = types.ListValueFrom(ctx, types.StringType, regions)
+	state.Regions, _ = types.SetValueFrom(ctx, types.StringType, regions)
 
 	// Set state
 	diags := resp.State.Set(ctx, &state)
