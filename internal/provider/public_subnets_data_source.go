@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp-demoapp/hashicups-client-go"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	// "github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -19,35 +18,33 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ datasource.DataSource              = &coffeesDataSource{}
-	_ datasource.DataSourceWithConfigure = &coffeesDataSource{}
+	_ datasource.DataSource              = &publicSubnetsDataSource{}
+	_ datasource.DataSourceWithConfigure = &publicSubnetsDataSource{}
 )
 
 // NewCoffeesDataSource is a helper function to simplify the provider implementation.
 func NewCoffeesDataSource() datasource.DataSource {
-	return &coffeesDataSource{}
+	return &publicSubnetsDataSource{}
 }
 
-// coffeesDataSource is the data source implementation.
-type coffeesDataSource struct {
+// publicSubnetsDataSource is the data source implementation.
+type publicSubnetsDataSource struct {
 	client *hashicups.Client
 }
 
-// coffeesDataSourceModel maps the data source schema data.
-type coffeesDataSourceModel struct {
-	// Coffee coffeeModel `tfsdk:"coffees"`
-	// AgentsIpv4               types.List `tfsdk:"agents_ipv4"`
+// publicSubnetsDataSourceModel maps the data source schema data.
+type publicSubnetsDataSourceModel struct {
 	Arns types.List            `tfsdk:"arns"`
 	Regions types.List         `tfsdk:"regions"`
 }
 
 // Metadata returns the data source type name.
-func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_coffees"
+func (d *publicSubnetsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "public_subnets"
 }
 
 // Schema defines the schema for the data source.
-func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *publicSubnetsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Use this data source to retrieve public subnet ARNs.",
 		Attributes: map[string]schema.Attribute{
@@ -66,7 +63,7 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 }
 
 // Configure adds the provider configured client to the data source.
-func (d *coffeesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *publicSubnetsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -84,9 +81,36 @@ func (d *coffeesDataSource) Configure(_ context.Context, req datasource.Configur
 	d.client = client
 }
 
+func addToSubnetArns(
+	ctx context.Context,
+	ec2RegionClient *ec2.Client,
+	subnetARNs *[]string,
+	nextToken *string,
+) (*string, error) {
+	input := &ec2.DescribeSubnetsInput{
+		 Filters: []ec2types.Filter{
+	        {
+	            Name:   aws.String("map-public-ip-on-launch"),
+	            Values: []string{"true"},
+	        },
+		},
+		NextToken: nextToken,
+	}
+	resp, err := ec2RegionClient.DescribeSubnets(ctx, input)
+    if err != nil {
+        return nil, err
+    }
+
+	for _, subnet := range resp.Subnets {
+		*subnetARNs = append(*subnetARNs, *subnet.SubnetArn)
+	}
+
+	return resp.NextToken, nil
+}
+
 // Read refreshes the Terraform state with the latest data.
-func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state coffeesDataSourceModel
+func (d *publicSubnetsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var state publicSubnetsDataSourceModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -133,32 +157,22 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 		// Iterate through pages
 		for {
-			desribeSubnetsResp, err := regionClient.DescribeSubnets(
+			nextToken, err = addToSubnetArns(
 				ctx,
-				&ec2.DescribeSubnetsInput{
-					 Filters: []ec2types.Filter{
-				        {
-				            Name:   aws.String("map-public-ip-on-launch"),
-				            Values: []string{"true"},
-				        },
-					},
-					NextToken: nextToken,
-				},
+				regionClient,
+				&subnetARNs,
+				nextToken,
 			)
+
 			if err != nil {
 				resp.Diagnostics.AddError("Error describing subnets in region, " + err.Error(), "")
 				return
 			}
-			for _, subnet := range desribeSubnetsResp.Subnets {
-				subnetARNs = append(subnetARNs, *subnet.SubnetArn)
-			}
 
 			// Check if there are more pages of subnets to retrieve
-			if desribeSubnetsResp.NextToken == nil {
+			if nextToken == nil {
 				break
 			}
-
-			nextToken = desribeSubnetsResp.NextToken
 		}
 	}
 	// Sort lists

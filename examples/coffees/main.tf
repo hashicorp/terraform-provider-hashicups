@@ -1,21 +1,21 @@
 terraform {
   required_providers {
-    hashicups = {
+    public = {
       source = "hashicorp.com/edu/hashicups-pf"
     }
   }
 }
 
-provider "hashicups" {
+provider "public" {
   host     = "http://localhost:19090"
   username = "education"
   password = "test123"
 }
 
-data "hashicups_coffees" "edu" {
+data "public_subnets" "subnets" {
   regions = ["us-west-1",  "us-east-1", "us-east-2", "us-west-2"]
 }
 
-output "edu_coffees" {
-  value = data.hashicups_coffees.edu
+output "public_subnets" {
+  value = data.public_subnets.subnets
 }
