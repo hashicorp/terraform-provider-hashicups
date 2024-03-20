@@ -1,3 +1,3 @@
 module terraform-provider-hashicups-pf
 
-go 1.18
+go 1.21
