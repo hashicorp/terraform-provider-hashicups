@@ -25,8 +25,6 @@ func TestAccCoffeesDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.name", "HCP Aeropress"),
 					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.price", "200"),
 					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "coffees.0.teaser", "Automation in a cup"),
-					// Verify placeholder id attribute
-					resource.TestCheckResourceAttr("data.hashicups_coffees.test", "id", "placeholder"),
 				),
 			},
 		},

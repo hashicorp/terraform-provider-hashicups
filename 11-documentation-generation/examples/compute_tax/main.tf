@@ -4,7 +4,7 @@ terraform {
       source = "hashicorp.com/edu/hashicups"
     }
   }
-  required_version = ">= 1.1.0"
+  required_version = ">= 1.8.0"
 }
 
 provider "hashicups" {

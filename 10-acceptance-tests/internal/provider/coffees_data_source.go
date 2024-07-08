@@ -29,7 +29,6 @@ type coffeesDataSource struct {
 // coffeesDataSourceModel maps the data source schema data.
 type coffeesDataSourceModel struct {
 	Coffees []coffeesModel `tfsdk:"coffees"`
-	ID      types.String   `tfsdk:"id"`
 }
 
 // coffeesModel maps coffees schema data.
@@ -57,9 +56,6 @@ func (d *coffeesDataSource) Metadata(_ context.Context, req datasource.MetadataR
 func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed: true,
-			},
 			"coffees": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
@@ -132,8 +128,6 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		state.Coffees = append(state.Coffees, coffeeState)
 	}
 
-	state.ID = types.StringValue("placeholder")
-
 	// Set state
 	diags := resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -144,6 +138,8 @@ func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 // Configure adds the provider configured client to the data source.
 func (d *coffeesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Add a nil check when handling ProviderData because Terraform
+	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
 		return
 	}
