@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
@@ -20,10 +17,10 @@ func TestComputeTaxFunction_Known(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: `
-				output "test" {
-					value = provider::hashicups::compute_tax(5.00, 0.085)
-				}
-				`,
+        output "test" {
+          value = provider::hashicups::compute_tax(5.00, 0.085)
+        }
+        `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckOutput("test", "5.43"),
 				),
@@ -41,10 +38,10 @@ func TestComputeTaxFunction_Null(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: `
-				output "test" {
-					value = provider::hashicups::compute_tax(null, 0.085)
-				}
-				`,
+        output "test" {
+          value = provider::hashicups::compute_tax(null, 0.085)
+        }
+        `,
 				// The parameter does not enable AllowNullValue
 				ExpectError: regexp.MustCompile(`argument must not be null`),
 			},
