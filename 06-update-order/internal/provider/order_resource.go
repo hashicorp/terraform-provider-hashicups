@@ -25,11 +25,6 @@ func NewOrderResource() resource.Resource {
 	return &orderResource{}
 }
 
-// orderResource is the resource implementation.
-type orderResource struct {
-	client *hashicups.Client
-}
-
 // orderResourceModel maps the resource schema data.
 type orderResourceModel struct {
 	ID          types.String     `tfsdk:"id"`
@@ -51,6 +46,11 @@ type orderItemCoffeeModel struct {
 	Description types.String  `tfsdk:"description"`
 	Price       types.Float64 `tfsdk:"price"`
 	Image       types.String  `tfsdk:"image"`
+}
+
+// orderResource is the resource implementation.
+type orderResource struct {
+	client *hashicups.Client
 }
 
 // Metadata returns the resource type name.
@@ -279,6 +279,8 @@ func (r *orderResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 
 // Configure adds the provider configured client to the resource.
 func (r *orderResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Add a nil check when handling ProviderData because Terraform
+	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
 		return
 	}

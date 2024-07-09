@@ -176,6 +176,7 @@ func (p *hashicupsProvider) Configure(ctx context.Context, req provider.Configur
 
 	ctx = tflog.SetField(ctx, "hashicups_host", host)
 	ctx = tflog.SetField(ctx, "hashicups_username", username)
+	ctx = tflog.SetField(ctx, "hashicups_password", password)
 	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "hashicups_password")
 
 	tflog.Debug(ctx, "Creating HashiCups client")
