@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Manage example order.
 resource "hashicups_order" "example" {
   items = [
