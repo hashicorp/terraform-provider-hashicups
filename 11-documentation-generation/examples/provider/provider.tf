@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # Configuration-based authentication
 provider "hashicups" {
   username = "education"
