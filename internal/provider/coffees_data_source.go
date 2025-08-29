@@ -62,3 +62,8 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 func (d *coffeesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	return
 }
+
+// Configure adds the provider configured client to the data source.
+func (d *coffeesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	return
+}
