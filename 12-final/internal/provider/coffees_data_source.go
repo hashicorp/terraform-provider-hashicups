@@ -42,7 +42,7 @@ type coffeesModel struct {
 	Ingredients []coffeesIngredientsModel `tfsdk:"ingredients"`
 }
 
-// coffeesIngredientsModel maps coffee ingredients data
+// coffeesIngredientsModel maps coffee ingredients data.
 type coffeesIngredientsModel struct {
 	ID types.Int64 `tfsdk:"id"`
 }
@@ -57,10 +57,6 @@ func (d *coffeesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 	resp.Schema = schema.Schema{
 		Description: "Fetches the list of coffees.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "Placeholder identifier attribute.",
-				Computed:    true,
-			},
 			"coffees": schema.ListNestedAttribute{
 				Description: "List of coffees.",
 				Computed:    true,
