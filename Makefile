@@ -57,6 +57,11 @@ build-and-package-local: generate-docs ## Build and package the provider locally
 	BUILD_VERSION=$(VERSION) \
 	goreleaser release --snapshot --clean --skip=sign
 
+build-and-package: generate-docs ## Build and package the provider
+	PROJECT_NAME=$(PROJECT_NAME) \
+	BUILD_VERSION=$(VERSION) \
+	goreleaser release --snapshot --clean
+
 ##@ Clean up
 clean: ## Clean up generated files
 	rm -rf dist/ bin/
