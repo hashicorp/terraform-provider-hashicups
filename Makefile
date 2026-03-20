@@ -1,46 +1,59 @@
 # Variables
-CERT_DIR := certs
-CERT_FILE := $(CERT_DIR)/cert.pem
-KEY_FILE := $(CERT_DIR)/key.pem
 
+# Help target
+GREY := $(shell tput setaf 8)
+GREEN_BOLD := $(shell tput setaf 2; tput bold)
+RESET := $(shell tput sgr0)
+##@ Help
+help: ## Show this help message
+	@echo "Usage: make [target]"
+	@awk 'BEGIN {FS = ":.*##";} \
+	/^[a-zA-Z_-]+:.*##/ { printf "  ${GREY}%-40s${RESET} %s\n", $$1, $$2 } \
+	/^##@/ { printf "\n${GREEN_BOLD}%-40s${RESET}\n", substr($$0, 5) }' \
+	$(MAKEFILE_LIST)
 
-# Targets
-$(CERT_FILE):
-	@echo "Certs missing. Generating self-signed certificate for testing..."
-	mkdir -p $(CERT_DIR)
-	mkcert -install
-	mkcert -key-file $(KEY_FILE) -cert-file $(CERT_FILE) localhost 127.0.0.1
-	@echo "Certificate generated at $(CERT_FILE) and key at $(KEY_FILE)"
+##@ Docker Compose
+start-local-hashicups: ## Start local HashiCups server
+	@echo "Starting local HashiCups server ..."
+	docker compose --file docker/hashicups.docker-compose.yml up --remove-orphans
 
-start-local-terraform-registry: $(CERT_FILE)
-	@echo "Starting local Terraform registry with self-signed certificate..."
+stop-local-hashicups: ## Stop local HashiCups server
+	@echo "Stopping local HashiCups server ..."
+	docker compose --file docker/hashicups.docker-compose.yml down --remove-orphans
+
+start-local-registry-services: ## Start local s3 services to host binaries
+	@echo "Starting local s3 services to host binaries..."
 	docker compose --file docker/registry.docker-compose.yml up --remove-orphans
 
-stop-local-terraform-registry:
-	@echo "Stopping local Terraform registry..."
+stop-local-registry-services: ## Stop local s3 services
+	@echo "Stopping local s3 services..."
 	docker compose --file docker/registry.docker-compose.yml down --remove-orphans
 
-default: fmt lint install generate
+##@ Development
+tidy: ## Clean up go.mod and go.sum
+	go mod tidy
 
-build:
-	go build -v ./...
+fmt: ## Format code and apply automatic fixes
+	gofmt -s -w -e .
+	golangci-lint run --fix
 
-install: build
-	go install -v ./...
-
-lint:
+lint: fmt ## Run linters
 	golangci-lint run
 
-generate:
-	cd tools; go generate ./...
-
-fmt:
-	gofmt -s -w -e .
-
-test:
+test: lint ## Run unit tests
 	go test -v -cover -timeout=120s -parallel=10 ./...
 
-testacc:
+testacc: lint ## Run acceptance tests
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
 
-.PHONY: fmt lint test testacc build install generate
+##@ Build and Install
+generate-docs: ## Generate documentation
+	cd tools; go generate ./...
+
+build-and-package: generate-docs ## Build and package the provider
+	goreleaser release --snapshot --clean
+
+clean: ## Clean up generated files
+	rm -rf dist/ bin/
+
+.PHONY: help start-local-hashicups stop-local-hashicups start-local-registry-services stop-local-registry-services tidy fmt lint test testacc generate-docs build-and-package clean
