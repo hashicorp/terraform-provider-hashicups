@@ -1,4 +1,6 @@
 # Variables
+VERSION := 0.0.1
+PROJECT_NAME := hashicups
 
 # Help target
 GREY := $(shell tput setaf 8)
@@ -50,9 +52,12 @@ testacc: lint ## Run acceptance tests
 generate-docs: ## Generate documentation
 	cd tools; go generate ./...
 
-build-and-package: generate-docs ## Build and package the provider
-	goreleaser release --snapshot --clean
+build-and-package-local: generate-docs ## Build and package the provider locally without signing
+	PROJECT_NAME=$(PROJECT_NAME) \
+	BUILD_VERSION=$(VERSION) \
+	goreleaser release --snapshot --clean --skip=sign
 
+##@ Clean up
 clean: ## Clean up generated files
 	rm -rf dist/ bin/
 
