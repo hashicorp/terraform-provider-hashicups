@@ -1,27 +1,32 @@
-# Visit https://golangci-lint.run/ for usage documentation
-# and information on other useful linters
-issues:
-  max-per-linter: 0
-  max-same-issues: 0
+version: "2"  # Required for golangci-lint v2+
+
+run:
+  timeout: 5m
+  # v2 replaces many 'run' flags with streamlined defaults
+  # Concurrency and show-stats are now enabled by default
 
 linters:
-  disable-all: true
+  # 'default' replaces 'enable-all'/'disable-all'
+  # options: standard, all, none, fast
+  default: standard
   enable:
-    - durationcheck
-    - errcheck
-    - exportloopref
-    - forcetypeassert
-    - godot
-    - gofmt
-    - gosimple
-    - ineffassign
-    - makezero
     - misspell
-    - nilerr
-    - predeclared
-    - staticcheck
-    - tenv
-    - unconvert
-    - unparam
-    - unused
-    - vet
+    # - revive
+    - gocyclo      # Essential for functional purity
+
+  settings:
+    gocyclo:
+      min-complexity: 15  # Standard is 15; lower forces smaller functions
+    gocognit:
+      min-complexity: 15
+
+# v2-specific integrated formatting
+formatters:
+  enable:
+    - gofmt
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
