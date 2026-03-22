@@ -4,6 +4,9 @@ PROJECT_NAME := hashicups
 CERT_DIR := certs
 CERT_FILE := $(CERT_DIR)/cert.pem
 KEY_FILE := $(CERT_DIR)/key.pem
+AWS_ACCESS_KEY_ID := minioadmin
+AWS_SECRET_ACCESS_KEY := minioadminpassword
+AWS_DEFAULT_REGION := eu-east-1
 
 # Help target
 GREY := $(shell tput setaf 8)

@@ -33,3 +33,7 @@ website/vendor
 
 # Keep windows files with windows line endings
 *.winfile eol=crlf
+
+# Local development files
+.scratch/*
+certs/*

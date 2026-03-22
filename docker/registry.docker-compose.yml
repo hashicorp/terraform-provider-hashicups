@@ -19,10 +19,9 @@ services:
       - minio
     entrypoint: >
       sh -c "
-        sleep 10 &&
+        sleep 10;
         mc alias set myminio http://minio:9000 minioadmin minioadminpassword;
         mc mb myminio/pvt-registry --ignore-existing;
-        exit 0
       "
     networks:
       - registry-net
@@ -36,7 +35,7 @@ services:
       - BORING_REGISTRY_STORAGE_S3_ENDPOINT=http://minio:9000
       - BORING_REGISTRY_STORAGE_S3_PATHSTYLE=true
       - BORING_REGISTRY_AUTH_STATIC_TOKEN=very-secure-token
-      - AWS_SECRET_ACCESS_KEY_ID=minioadmin
+      - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_SECRET_ACCESS_KEY=minioadminpassword
       - BORING_REGISTRY_DEBUG=true
     depends_on:
@@ -47,7 +46,7 @@ services:
       - registry-net
 
   nginx:
-    image: nginx:latest
+    image: nginx:alpine
     ports:
       - "5601:443"
     volumes:
