@@ -42,9 +42,17 @@ start-local-registry-services: $(CERT_FILE) ## Start local terraform registry se
 	@echo "Starting local terraform registry services to host binaries..."
 	docker compose --file docker/registry.docker-compose.yml up --remove-orphans
 
-publish-to-local-registry: build-and-package ## Publish provider binaries to local terraform registry. Requires GPG signing!
+publish-to-local-registry: build-and-package generate-signing-keys ## Publish provider binaries to local terraform registry. Requires GPG signing!
 	@echo "Publishing provider binaries to local terraform registry..."
-	
+
+generate-signing-keys: check-gpg-signing ## Generate signing-keys.json for the terraform registry
+	@GPG_KEY=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)}; \
+	KEY_ID=$$($(GPG) --list-keys --with-colons $$GPG_KEY 2>/dev/null | awk -F: '/^pub:/ {print substr($$5, length($$5)-15); exit}'); \
+	ASCII_ARMOR=$$($(GPG) --armor --export $$GPG_KEY 2>/dev/null | sed 's/\\/\\\\/g' | sed ':a;N;$$!ba;s/\n/\\n/g'); \
+	SIGNING_KEYS_JSON='{"gpg_public_keys": [{"key_id": "'$$KEY_ID'", "ascii_armor": "'$$ASCII_ARMOR'"}]}'; \
+	mkdir -p dist; \
+	echo "$$SIGNING_KEYS_JSON" | jq . > dist/signing-keys.json; \
+	echo "Generated signing-keys.json with key ID: $$KEY_ID"
 
 stop-local-registry-services: ## Stop local terraform registry services
 	@echo "Stopping local terraform registry services..."
@@ -104,4 +112,4 @@ build-and-package: generate-docs check-gpg-signing ## Build and package the prov
 clean: ## Clean up generated files
 	rm -rf dist/ bin/ $(CERT_DIR)/
 
-.PHONY: help start-local-hashicups stop-local-hashicups start-local-registry-services publish-to-local-registry stop-local-registry-services tidy fmt lint test testacc generate-docs check-gpg-signing build-and-package-local build-and-package clean
+.PHONY: help start-local-hashicups stop-local-hashicups start-local-registry-services publish-to-local-registry stop-local-registry-services tidy fmt lint test testacc generate-docs generate-signing-keys check-gpg-signing build-and-package-local build-and-package clean
