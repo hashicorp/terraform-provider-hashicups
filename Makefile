@@ -1,6 +1,14 @@
+# Load environment variables from .env file if it exists
+-include .env
+export
+
 # Variables
 VERSION := 0.0.1
 PROJECT_NAME := hashicups
+NAMESPACE := hashicups
+PROVIDER_NAME := hashicups
+S3_BUCKET := pvt-registry
+S3_ENDPOINT := http://localhost:9000
 GPG := gpg
 DEFAULT_GPG_FINGERPRINT := $(shell $(GPG) --list-secret-keys --with-colons --fingerprint 2>/dev/null | awk -F: '/^fpr:/ {print $$10; exit}')
 CERT_DIR := certs
@@ -42,17 +50,41 @@ start-local-registry-services: $(CERT_FILE) ## Start local terraform registry se
 	@echo "Starting local terraform registry services to host binaries..."
 	docker compose --file docker/registry.docker-compose.yml up --remove-orphans
 
-publish-to-local-registry: build-and-package generate-signing-keys ## Publish provider binaries to local terraform registry. Requires GPG signing!
+publish-to-local-registry: build-and-package generate-signing-keys upload-to-registry ## Publish provider binaries to local terraform registry. Requires GPG signing!
 	@echo "Publishing provider binaries to local terraform registry..."
+	@echo "✓ Provider published to MinIO S3 backend"
 
 generate-signing-keys: check-gpg-signing ## Generate signing-keys.json for the terraform registry
-	@GPG_KEY=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)}; \
+	@mkdir -p dist; \
+	GPG_KEY=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)}; \
 	KEY_ID=$$($(GPG) --list-keys --with-colons $$GPG_KEY 2>/dev/null | awk -F: '/^pub:/ {print substr($$5, length($$5)-15); exit}'); \
-	ASCII_ARMOR=$$($(GPG) --armor --export $$GPG_KEY 2>/dev/null | sed 's/\\/\\\\/g' | sed ':a;N;$$!ba;s/\n/\\n/g'); \
-	SIGNING_KEYS_JSON='{"gpg_public_keys": [{"key_id": "'$$KEY_ID'", "ascii_armor": "'$$ASCII_ARMOR'"}]}'; \
-	mkdir -p dist; \
-	echo "$$SIGNING_KEYS_JSON" | jq . > dist/signing-keys.json; \
-	echo "Generated signing-keys.json with key ID: $$KEY_ID"
+	$(GPG) --armor --export $$GPG_KEY > dist/temp_key.asc 2>/dev/null; \
+	python3 scripts/generate-signing-keys.py "$$KEY_ID" dist/temp_key.asc dist/signing-keys.json; \
+	rm -f dist/temp_key.asc
+
+upload-to-registry: ## Upload generated provider files to MinIO S3 backend following boring-registry layout
+	@echo "Uploading provider to S3 backend..."
+	@command -v aws >/dev/null 2>&1 || (echo "Error: aws CLI not found. Install it from https://aws.amazon.com/cli/" && exit 1)
+	@NAMESPACE=$(NAMESPACE); \
+	PROVIDER=$(PROVIDER_NAME); \
+	DIST_DIR=dist; \
+	if [ ! -d "$$DIST_DIR" ]; then echo "Error: dist directory not found. Run 'make build-and-package' first."; exit 1; fi; \
+	echo "Uploading signing-keys.json to providers/$$NAMESPACE/"; \
+	aws s3 cp $$DIST_DIR/signing-keys.json s3://$(S3_BUCKET)/providers/$$NAMESPACE/signing-keys.json \
+		--endpoint-url $(S3_ENDPOINT) \
+		--region $(AWS_DEFAULT_REGION) || (echo "Error uploading signing keys"; exit 1); \
+	echo "Uploading provider files to providers/$$NAMESPACE/$$PROVIDER/"; \
+	for file in $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_*.zip $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS*; do \
+		if [ -f "$$file" ]; then \
+			filename=$$(basename "$$file"); \
+			new_filename=$$(echo "$$filename" | sed "s|^$(PROJECT_NAME)_|terraform-provider-$(PROVIDER_NAME)_|"); \
+			echo "  Uploading $$new_filename"; \
+			aws s3 cp "$$file" "s3://$(S3_BUCKET)/providers/$$NAMESPACE/$$PROVIDER/$$new_filename" \
+				--endpoint-url $(S3_ENDPOINT) \
+				--region $(AWS_DEFAULT_REGION) || (echo "Error uploading $$file"; exit 1); \
+		fi; \
+	done; \
+	echo "Upload complete!"
 
 stop-local-registry-services: ## Stop local terraform registry services
 	@echo "Stopping local terraform registry services..."
@@ -112,4 +144,4 @@ build-and-package: generate-docs check-gpg-signing ## Build and package the prov
 clean: ## Clean up generated files
 	rm -rf dist/ bin/ $(CERT_DIR)/
 
-.PHONY: help start-local-hashicups stop-local-hashicups start-local-registry-services publish-to-local-registry stop-local-registry-services tidy fmt lint test testacc generate-docs generate-signing-keys check-gpg-signing build-and-package-local build-and-package clean
+.PHONY: help start-local-hashicups stop-local-hashicups start-local-registry-services publish-to-local-registry stop-local-registry-services tidy fmt lint test testacc generate-docs generate-signing-keys upload-to-registry check-gpg-signing build-and-package-local build-and-package clean
