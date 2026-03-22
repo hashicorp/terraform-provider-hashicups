@@ -26,7 +26,8 @@ services:
         condition: service_healthy
     entrypoint: >
       sh -c "
-        mc alias set myminio http://minio:9000 minioadmin minioadminpassword;
+        set -e;
+        mc alias set myminio http://minio:9000 minioadmin minioadminpassword &&
         mc mb myminio/pvt-registry --ignore-existing;
       "
     networks:
