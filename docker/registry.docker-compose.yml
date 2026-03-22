@@ -45,6 +45,8 @@ services:
       - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_SECRET_ACCESS_KEY=minioadminpassword
       - BORING_REGISTRY_DEBUG=true
+    extra_hosts:
+      - "minio:host-gateway"
     depends_on:
       minio-create-bucket:
         condition: service_completed_successfully
@@ -60,6 +62,8 @@ services:
     volumes:
       - ./local-nginx.conf:/etc/nginx/nginx.conf:ro
       - ../certs:/etc/nginx/certs:ro
+    extra_hosts:
+      - "minio:host-gateway"
     depends_on:
       - pvt-registry
     networks:

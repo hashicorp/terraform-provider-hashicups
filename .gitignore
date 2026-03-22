@@ -38,3 +38,4 @@ website/vendor
 .scratch/*
 certs/*
 .env
+*.lock.hcl

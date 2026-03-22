@@ -69,6 +69,13 @@ upload-to-registry: ## Upload generated provider files to MinIO S3 backend follo
 	PROVIDER=$(PROVIDER_NAME); \
 	DIST_DIR=dist; \
 	if [ ! -d "$$DIST_DIR" ]; then echo "Error: dist directory not found. Run 'make build-and-package' first."; exit 1; fi; \
+	echo "Regenerating SHA256SUMS with terraform-provider prefixed filenames..."; \
+	python3 scripts/regenerate-shasums.py $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS.tmp "$(PROJECT_NAME)_$(VERSION)_" "terraform-provider-$(PROVIDER_NAME)_$(VERSION)_" && \
+	mv $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS.tmp $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS; \
+	echo "Re-signing the updated SHA256SUMS file..."; \
+	GPG_KEY=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)}; \
+	$(GPG) --batch --yes --pinentry-mode loopback --passphrase "$${GPG_PASSPHRASE:-}" --local-user "$$GPG_KEY" --output $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS.sig --detach-sign $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS && \
+	echo "Re-signed SHA256SUMS"; \
 	echo "Uploading signing-keys.json to providers/$$NAMESPACE/"; \
 	aws s3 cp $$DIST_DIR/signing-keys.json s3://$(S3_BUCKET)/providers/$$NAMESPACE/signing-keys.json \
 		--endpoint-url $(S3_ENDPOINT) \

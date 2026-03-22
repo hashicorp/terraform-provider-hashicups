@@ -18,7 +18,7 @@ builds:
   goarch:
     - amd64
     - arm64
-  binary: '{{ .Env.PROJECT_NAME }}_v{{ .Env.BUILD_VERSION }}'
+  binary: 'terraform-provider-{{ .Env.PROJECT_NAME }}_v{{ .Env.BUILD_VERSION }}'
 archives:
 - format: zip
   name_template: '{{ .Env.PROJECT_NAME }}_{{ .Env.BUILD_VERSION }}_{{ .Os }}_{{ .Arch }}'
