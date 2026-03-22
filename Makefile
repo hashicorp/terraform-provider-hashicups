@@ -40,6 +40,10 @@ start-local-registry-services: $(CERT_FILE) ## Start local terraform registry se
 	@echo "Starting local terraform registry services to host binaries..."
 	docker compose --file docker/registry.docker-compose.yml up --remove-orphans
 
+publish-to-local-registry: build-and-package## Publish provider binaries to local terraform registry. Requires GPG signing!
+	@echo "Publishing provider binaries to local terraform registry..."
+	
+
 stop-local-registry-services: ## Stop local terraform registry services
 	@echo "Stopping local terraform registry services..."
 	docker compose --file docker/registry.docker-compose.yml down --remove-orphans
