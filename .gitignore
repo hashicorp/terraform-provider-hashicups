@@ -37,3 +37,4 @@ website/vendor
 # Local development files
 .scratch/*
 certs/*
+.env

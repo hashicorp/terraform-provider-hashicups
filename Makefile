@@ -1,6 +1,8 @@
 # Variables
 VERSION := 0.0.1
 PROJECT_NAME := hashicups
+GPG := gpg
+DEFAULT_GPG_FINGERPRINT := $(shell $(GPG) --list-secret-keys --with-colons --fingerprint 2>/dev/null | awk -F: '/^fpr:/ {print $$10; exit}')
 CERT_DIR := certs
 CERT_FILE := $(CERT_DIR)/cert.pem
 KEY_FILE := $(CERT_DIR)/key.pem
@@ -40,7 +42,7 @@ start-local-registry-services: $(CERT_FILE) ## Start local terraform registry se
 	@echo "Starting local terraform registry services to host binaries..."
 	docker compose --file docker/registry.docker-compose.yml up --remove-orphans
 
-publish-to-local-registry: build-and-package## Publish provider binaries to local terraform registry. Requires GPG signing!
+publish-to-local-registry: build-and-package ## Publish provider binaries to local terraform registry. Requires GPG signing!
 	@echo "Publishing provider binaries to local terraform registry..."
 	
 
@@ -74,7 +76,26 @@ build-and-package-local: generate-docs ## Build and package the provider locally
 	BUILD_VERSION=$(VERSION) \
 	goreleaser release --snapshot --clean --skip=sign
 
-build-and-package: generate-docs ## Build and package the provider
+check-gpg-signing: ## Verify GPG signing prerequisites
+	@command -v $(GPG) >/dev/null 2>&1 || (echo "Error: gpg not found on PATH." && exit 1)
+	@if [ -z "$(GPG_FINGERPRINT)" ] && [ -z "$(DEFAULT_GPG_FINGERPRINT)" ]; then \
+		echo "Error: no GPG secret key found. Import/create one or set GPG_FINGERPRINT."; \
+		exit 1; \
+	fi
+	@GPG_KEY=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)}; \
+	echo "Using GPG fingerprint: $$GPG_KEY"; \
+	TMP_FILE=$$(mktemp); \
+	echo "gpg-sign-check" > "$$TMP_FILE"; \
+	if ! $(GPG) --batch --yes --pinentry-mode loopback --passphrase "$${GPG_PASSPHRASE:-}" --local-user "$$GPG_KEY" --output /dev/null --detach-sign "$$TMP_FILE" >/dev/null 2>&1; then \
+		rm -f "$$TMP_FILE"; \
+		echo "Error: unable to sign with the selected GPG key. If the key is passphrase-protected, export GPG_PASSPHRASE."; \
+		exit 1; \
+	fi; \
+	rm -f "$$TMP_FILE"
+
+build-and-package: generate-docs check-gpg-signing ## Build and package the provider with GPG signing
+	@GPG_FINGERPRINT=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)} \
+	GPG_PASSPHRASE=$${GPG_PASSPHRASE:-} \
 	PROJECT_NAME=$(PROJECT_NAME) \
 	BUILD_VERSION=$(VERSION) \
 	goreleaser release --snapshot --clean
@@ -83,4 +104,4 @@ build-and-package: generate-docs ## Build and package the provider
 clean: ## Clean up generated files
 	rm -rf dist/ bin/ $(CERT_DIR)/
 
-.PHONY: help start-local-hashicups stop-local-hashicups start-local-registry-services stop-local-registry-services tidy fmt lint test testacc generate-docs build-and-package clean
+.PHONY: help start-local-hashicups stop-local-hashicups start-local-registry-services publish-to-local-registry stop-local-registry-services tidy fmt lint test testacc generate-docs check-gpg-signing build-and-package-local build-and-package clean
