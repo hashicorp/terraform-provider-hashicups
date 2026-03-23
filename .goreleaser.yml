@@ -21,12 +21,12 @@ builds:
   binary: 'terraform-provider-{{ .Env.PROJECT_NAME }}_v{{ .Env.BUILD_VERSION }}'
 archives:
 - format: zip
-  name_template: '{{ .Env.PROJECT_NAME }}_{{ .Env.BUILD_VERSION }}_{{ .Os }}_{{ .Arch }}'
+  name_template: 'terraform-provider-{{ .Env.PROJECT_NAME }}_{{ .Env.BUILD_VERSION }}_{{ .Os }}_{{ .Arch }}'
 checksum:
   extra_files:
     - glob: 'terraform-registry-manifest.json'
       name_template: '{{ .Env.PROJECT_NAME }}_{{ .Env.BUILD_VERSION }}_manifest.json'
-  name_template: '{{ .Env.PROJECT_NAME }}_{{ .Env.BUILD_VERSION }}_SHA256SUMS'
+  name_template: 'terraform-provider-{{ .Env.PROJECT_NAME }}_{{ .Env.BUILD_VERSION }}_SHA256SUMS'
   algorithm: sha256
 signs:
   - artifacts: checksum

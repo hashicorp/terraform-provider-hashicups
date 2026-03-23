@@ -58,35 +58,24 @@ generate-signing-keys: check-gpg-signing ## Generate signing-keys.json for the t
 	@mkdir -p dist; \
 	GPG_KEY=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)}; \
 	KEY_ID=$$($(GPG) --list-keys --with-colons $$GPG_KEY 2>/dev/null | awk -F: '/^pub:/ {print substr($$5, length($$5)-15); exit}'); \
-	$(GPG) --armor --export $$GPG_KEY > dist/temp_key.asc 2>/dev/null; \
-	python3 scripts/generate-signing-keys.py "$$KEY_ID" dist/temp_key.asc dist/signing-keys.json; \
-	rm -f dist/temp_key.asc
+	$(GPG) --armor --export $$GPG_KEY 2>/dev/null | \
+	jq -Rs --arg key_id "$$KEY_ID" '{"gpg_public_keys": [{"key_id": $$key_id, "ascii_armor": .}]}' > dist/signing-keys.json; \
+	echo "Generated dist/signing-keys.json with key ID: $$KEY_ID"
 
 upload-to-registry: ## Upload generated provider files to MinIO S3 backend following boring-registry layout
 	@echo "Uploading provider to S3 backend..."
 	@command -v aws >/dev/null 2>&1 || (echo "Error: aws CLI not found. Install it from https://aws.amazon.com/cli/" && exit 1)
-	@NAMESPACE=$(NAMESPACE); \
-	PROVIDER=$(PROVIDER_NAME); \
-	DIST_DIR=dist; \
+	@DIST_DIR=dist; \
 	if [ ! -d "$$DIST_DIR" ]; then echo "Error: dist directory not found. Run 'make build-and-package' first."; exit 1; fi; \
-	echo "Regenerating SHA256SUMS with terraform-provider prefixed filenames..."; \
-	python3 scripts/regenerate-shasums.py $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS.tmp "$(PROJECT_NAME)_$(VERSION)_" "terraform-provider-$(PROVIDER_NAME)_$(VERSION)_" && \
-	mv $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS.tmp $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS; \
-	echo "Re-signing the updated SHA256SUMS file..."; \
-	GPG_KEY=$${GPG_FINGERPRINT:-$(DEFAULT_GPG_FINGERPRINT)}; \
-	$(GPG) --batch --yes --pinentry-mode loopback --passphrase "$${GPG_PASSPHRASE:-}" --local-user "$$GPG_KEY" --output $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS.sig --detach-sign $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS && \
-	echo "Re-signed SHA256SUMS"; \
-	echo "Uploading signing-keys.json to providers/$$NAMESPACE/"; \
-	aws s3 cp $$DIST_DIR/signing-keys.json s3://$(S3_BUCKET)/providers/$$NAMESPACE/signing-keys.json \
+	echo "Uploading signing-keys.json to providers/$(NAMESPACE)/"; \
+	aws s3 cp $$DIST_DIR/signing-keys.json s3://$(S3_BUCKET)/providers/$(NAMESPACE)/signing-keys.json \
 		--endpoint-url $(S3_ENDPOINT) \
 		--region $(AWS_DEFAULT_REGION) || (echo "Error uploading signing keys"; exit 1); \
-	echo "Uploading provider files to providers/$$NAMESPACE/$$PROVIDER/"; \
-	for file in $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_*.zip $$DIST_DIR/$(PROJECT_NAME)_$(VERSION)_SHA256SUMS*; do \
+	echo "Uploading provider files to providers/$(NAMESPACE)/$(PROVIDER_NAME)/"; \
+	for file in $$DIST_DIR/terraform-provider-$(PROVIDER_NAME)_$(VERSION)_*.zip $$DIST_DIR/terraform-provider-$(PROVIDER_NAME)_$(VERSION)_SHA256SUMS*; do \
 		if [ -f "$$file" ]; then \
-			filename=$$(basename "$$file"); \
-			new_filename=$$(echo "$$filename" | sed "s|^$(PROJECT_NAME)_|terraform-provider-$(PROVIDER_NAME)_|"); \
-			echo "  Uploading $$new_filename"; \
-			aws s3 cp "$$file" "s3://$(S3_BUCKET)/providers/$$NAMESPACE/$$PROVIDER/$$new_filename" \
+			echo "  Uploading $$(basename $$file)"; \
+			aws s3 cp "$$file" "s3://$(S3_BUCKET)/providers/$(NAMESPACE)/$(PROVIDER_NAME)/$$(basename $$file)" \
 				--endpoint-url $(S3_ENDPOINT) \
 				--region $(AWS_DEFAULT_REGION) || (echo "Error uploading $$file"; exit 1); \
 		fi; \
